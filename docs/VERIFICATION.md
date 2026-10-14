@@ -1,5 +1,17 @@
 # Verification — 2026-10-14, Piedmont
 
+## Independent-review fixes
+
+All three P2 findings have regression coverage:
+
+- Clan logout remounts the entire command session, clearing private unsent messages, call sign, key, drafts, editor values, notices/errors and pending requests. An old session's async callbacks cannot repopulate the new session.
+- Definitive order rejection clears the pending receipt while preserving the editable draft. Ambiguous network/server failures retain the exact request. The browser regression commits an order on the server and deliberately drops its response, then verifies the retry keeps the identical payload/ID and does not increment revision again.
+- AI expeditions are capped at the human limit of 100 ships per order. A 102-ship fixture validates and resolves across three turns; file-store reopen/retry checks verify each turn commits exactly once.
+
+Post-fix full verification: **43 engine/file-persistence checks and 26 live API/browser checks passed**, C# build zero warnings/errors, strict TypeScript checks and Vite production build passed. PostgreSQL integration remains skipped because no disposable server is configured. These totals supersede the original baseline counts below.
+
+A copy of the independent reviewer's harness was also rerun against the fixed projects without modifying the review checkout: **225 mirrored combat cases passed**, malformed extreme orders left state unchanged, the large-AI persisted campaign reached turn 3, and **24 competing resolution attempts across two processes produced exactly one commit** (`commits=1` / `commits=0`, both reporting turn 2). Local recheck artifacts are under ignored `test-results/reviewer-recheck/`.
+
 ## Verified
 
 - Windows host PIEDMONT; .NET SDK 10.0.400, Node 22.23.2, npm 10.9.8.
