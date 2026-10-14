@@ -1,0 +1,1 @@
+await Checks.Run();
