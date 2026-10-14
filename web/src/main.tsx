@@ -8,6 +8,11 @@ type Campaign={turn:number;deadline:string;winner:number|null;team:number;name:s
 const linked=(a:number,b:number)=>a!==b&&(Math.abs(a-b)===1||Math.abs(a-b)===6)&&!(Math.min(a,b)===5&&Math.max(a,b)===6);
 
 function App(){
+ const [session,setSession]=useState(0);
+ return <CommandSession key={session} onLeave={()=>setSession(value=>value+1)}/>;
+}
+
+function CommandSession({onLeave}:{onLeave:()=>void}){
  const [key,setKey]=useState(''),[game,setGame]=useState<Campaign|null>(null),[local,setLocal]=useState(false);
  const [draft,setDraft]=useState<Order[]>([]),[selected,setSelected]=useState(0),[kind,setKind]=useState('move'),[target,setTarget]=useState(1),[ships,setShips]=useState(2);
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[author,setAuthor]=useState('Commander'),[message,setMessage]=useState('');
@@ -26,7 +31,7 @@ function App(){
  const closed=Date.now()>=Date.parse(game.deadline)||game.winner!==null;
  const cost=draft.reduce((sum,o)=>sum+(o.kind==='collector'?30:o.kind==='build'?o.ships*5:0),0);
  const names=(id:number)=>game.stars[id]?.name??'Unknown';
- return <div className="shell"><header><div className="brand">✦ DEEPFIELD <span>COMMAND DECK</span></div><div className="headerRight"><span className="live">● {game.name}</span><button className="quiet" onClick={()=>{setGame(null);setKey('');setDraft([]);setPending(null);}}>Leave</button></div></header>
+ return <div className="shell"><header><div className="brand">✦ DEEPFIELD <span>COMMAND DECK</span></div><div className="headerRight"><span className="live">● {game.name}</span><button className="quiet" onClick={onLeave}>Leave</button></div></header>
  <main><section className="intro"><div><div className="eyebrow">THE LONG HORIZON / TURN {String(game.turn).padStart(3,'0')}</div><h1>The stars are within reach.</h1><p>Explore together. Commit your orders. Let the galaxy answer.</p></div><div className="deadline"><span>NEXT RESOLUTION · UTC</span><strong>{new Date(game.deadline).toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'})}</strong><small>{closed?'Orders closed':'All clans resolve simultaneously'}</small></div></section>
  <section className="metrics"><div><span>TREASURY</span><strong>{game.credits}<small> credits</small></strong></div><div><span>COLONIES</span><strong>{colonies}<small> / 4 required</small></strong></div><div><span>ENERGY NETWORK</span><strong>{game.energy}<small> / {game.goal} collectors</small></strong></div><div className="victory"><span>TYPE III HORIZON</span><progress max={12} value={Math.min(4,colonies)+Math.min(8,game.energy)}/><small>Control 4 colonies and 8 collectors to win</small></div></section>
  {game.winner!==null&&<div className="banner">{game.winner===2?'Shared victory':game.winner===game.team?'Your clan achieved Type III!':'The rival clan achieved Type III.'} — Campaign complete.</div>}

@@ -65,6 +65,16 @@ try{
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(artifacts,'command-mobile.png'),fullPage:true});
  check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Mobile layout has no horizontal overflow');
  check(errors.length===0,'Browser has no uncaught application errors');
+ await page.getByLabel('Call sign').fill('Private Aurora identity');
+ await page.getByLabel('Message',{exact:true}).fill('Unsent Aurora invasion plan');
+ await page.getByRole('button',{name:'+ Add to draft'}).click();
+ await page.getByRole('button',{name:'Leave',exact:true}).click();
+ check(await page.getByLabel('Clan access key').inputValue()==='', 'Leave clears the previous clan key');
+ await page.getByLabel('Clan access key').fill(keys[1]);await page.getByRole('button',{name:'Enter command deck'}).click();
+ await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ check(await page.getByLabel('Message',{exact:true}).inputValue()===''&&await page.getByLabel('Call sign').inputValue()==='Commander','Switching clans clears private unsent message and author');
+ check(await page.getByRole('status').innerText()===''&&await page.locator('.queue li').count()===0&&await page.getByRole('alert').count()===0,'Switching clans clears orders, notices and errors');
+ check(await page.getByLabel('Ships',{exact:true}).inputValue()==='2'&&await page.getByLabel('Destination').inputValue()==='-1','Switching clans resets order editor state');
  await browser.close();browser=null;
  await stop(); await start({LocalTest:'false'});
  check((await api('local/advance',{method:'POST',body:{turn:4}})).status===404,'Acceleration disabled without explicit opt-in');
