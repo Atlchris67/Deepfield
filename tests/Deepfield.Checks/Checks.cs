@@ -53,11 +53,29 @@ public static class Checks
         g=Rules.Create(99,Now,true);
         for(var turn=0;turn<60&&g.Winner==null;turn++){Rules.Validate(Rules.Observe(g,1),Rules.PlanAi(Rules.Observe(g,1)));Rules.Resolve(g,g.Deadline);}
         Assert(g.Winner==1,"AI can reach victory using legal visible orders");
+        g=Rules.Create(99,Now,true);g.Stars[11].Ships[1]=102;
+        var largeFleetPlan=Rules.PlanAi(Rules.Observe(g,1));Rules.Validate(Rules.Observe(g,1),largeFleetPlan);
+        Assert(largeFleetPlan.Any(o=>o.Kind=="move"&&o.Ships==100),"102-ship AI fleet produces a legal capped expedition");
+        for(var turn=0;turn<3;turn++)
+        {
+            var due=g.Deadline;var previous=g.Turn;
+            Assert(Rules.Resolve(g,due)&&g.Turn==previous+1&&!Rules.Resolve(g,due),"Large AI fleet resolves next turn once without stalling");
+        }
         var before=Rules.PlanAi(Rules.Observe(New(),1)); var secret=New();secret.Clans[0].Credits=999;secret.Stars[0].Ships[0]=99;
         Assert(JsonSerializer.Serialize(before)==JsonSerializer.Serialize(Rules.PlanAi(Rules.Observe(secret,1))),"Hidden enemy changes do not influence AI");
         var directory=Path.Combine(Path.GetTempPath(),"deepfield-checks-"+Guid.NewGuid());Directory.CreateDirectory(directory);
         var path=Path.Combine(directory,"campaign.json"); IGameStore store=new FileGameStore(path,New);
         await StoreChecks(store,()=>new FileGameStore(path,()=>throw new Exception("Should load existing save")));
+        var aiPath=Path.Combine(directory,"large-ai.json");
+        Game LargeAi(){var campaign=Rules.Create(99,Now,true);campaign.Stars[11].Ships[1]=102;return campaign;}
+        for(var turn=0;turn<3;turn++)
+        {
+            var due=Now.AddDays(turn+1);
+            var aiStore=new FileGameStore(aiPath,LargeAi);
+            Assert(await aiStore.Execute(campaign=>Rules.Resolve(campaign,due)),"Persisted large AI fleet advances at next deadline");
+            var reopened=new FileGameStore(aiPath,()=>throw new Exception("Expected persisted AI campaign"));
+            Assert(!await reopened.Execute(campaign=>Rules.Resolve(campaign,due))&&await reopened.Execute(campaign=>campaign.Turn,false)==turn+2,"Reopened AI campaign preserves exactly one committed advancement");
+        }
         var connection=Environment.GetEnvironmentVariable("DEEPFIELD_TEST_POSTGRES");
         if(connection is not null)
         {

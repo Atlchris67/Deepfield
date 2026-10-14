@@ -117,7 +117,8 @@ public static class Rules
             if (budget >= 30) { orders.Add(new("collector",s.Id)); budget -= 30; }
             if (budget >= 10) { orders.Add(new("build",s.Id,Ships:2)); budget -= 10; }
             var target = v.Stars.Where(t => t.Known && Linked(s.Id,t.Id) && t.Owner != v.Team).OrderBy(t => t.Id).FirstOrDefault();
-            if (target != null && s.Ships![v.Team] >= 4) orders.Add(new("move",s.Id,target.Id,s.Ships[v.Team]-1));
+            // Keep one ship at home and respect the same per-order cap as humans.
+            if (target != null && s.Ships![v.Team] >= 4) orders.Add(new("move",s.Id,target.Id,Math.Min(100,s.Ships[v.Team]-1)));
         }
         orders=orders.Take(24).ToList(); Validate(v, orders); return orders;
     }
