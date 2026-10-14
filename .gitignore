@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+web/dist/
+src/Deepfield.Api/wwwroot/
+data/
+.env
+*.log
+*.user
+test-results/
