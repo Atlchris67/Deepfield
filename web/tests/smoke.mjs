@@ -65,6 +65,19 @@ try{
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(artifacts,'command-mobile.png'),fullPage:true});
  check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Mobile layout has no horizontal overflow');
  check(errors.length===0,'Browser has no uncaught application errors');
+ const submissions=[];page.on('request',request=>{if(request.url().endsWith('/api/orders')&&request.method()==='PUT')submissions.push(request.postDataJSON());});
+ await page.getByLabel('Action at Hearth').selectOption('move');await page.getByLabel('Destination').selectOption('1');
+ await page.getByLabel('Ships',{exact:true}).fill('100');await page.getByRole('button',{name:'+ Add to draft'}).click();
+ await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('alert').filter({hasText:'Not enough existing ships'}).waitFor();
+ check(await page.getByRole('button',{name:'Remove order 1',exact:true}).isEnabled()&&await page.getByRole('button',{name:'+ Add to draft'}).isEnabled()&&await page.locator('.queue li').count()===1,'Definitive 409 preserves draft and unlocks editing');
+ await page.getByRole('button',{name:'Remove order 1',exact:true}).click();await page.getByLabel('Ships',{exact:true}).fill('2');await page.getByRole('button',{name:'+ Add to draft'}).click();
+ // Let the server commit, then lose its response: retry must reuse the exact ID/payload.
+ await page.route('**/api/orders',async route=>{await route.fetch();await route.abort('failed');},{times:1});
+ await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('alert').waitFor();
+ check(await page.getByRole('button',{name:'Retry submission',exact:true}).isVisible()&&await page.getByRole('button',{name:'Remove order 1',exact:true}).isDisabled(),'Ambiguous network failure retains pending request and locks edits');
+ const committedRevision=(await state()).revision;
+ await page.getByRole('button',{name:'Retry submission',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
+ check(submissions[0].requestId!==submissions[1].requestId&&JSON.stringify(submissions[1])===JSON.stringify(submissions[2])&&(await state()).revision===committedRevision,'Corrected draft uses fresh ID; lost-response retry is identical and commits once');
  await page.getByLabel('Call sign').fill('Private Aurora identity');
  await page.getByLabel('Message',{exact:true}).fill('Unsent Aurora invasion plan');
  await page.getByRole('button',{name:'+ Add to draft'}).click();
