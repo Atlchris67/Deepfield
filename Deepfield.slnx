@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Deepfield.Api/Deepfield.Api.csproj" />
+    <Project Path="src/Deepfield.Engine/Deepfield.Engine.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Deepfield.Checks/Deepfield.Checks.csproj" />
+  </Folder>
+</Solution>
