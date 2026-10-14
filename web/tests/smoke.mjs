@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import { request as httpRequest } from 'node:http';
 
 const root=resolve('..');
 const artifacts=resolve(root,'test-results'); await mkdir(artifacts,{recursive:true});
@@ -27,7 +28,8 @@ try{
  check((await fetch(base+'/api/campaign')).status===401,'Unauthenticated campaign denied');
  check((await state()).stars[11].ships===null,'API omits hidden fleet data');
  check((await api('local/advance',{method:'POST',body:{turn:1},headers:{'X-Forwarded-For':'8.8.8.8'}})).status===404,'Proxied acceleration denied');
- check((await api('local/advance',{method:'POST',body:{turn:1},headers:{Host:'starzdeepfield.com'}})).status===404,'Public hostname acceleration denied');
+ const publicHostStatus=await new Promise((done,fail)=>{const req=httpRequest(base+'/api/local/advance',{method:'POST',headers:{Host:'starzdeepfield.com',Authorization:'Bearer '+keys[0],'Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>done(res.statusCode));});req.on('error',fail);req.end(JSON.stringify({turn:1}));});
+ check(publicHostStatus===404,'Public hostname acceleration denied');
  const initial=await state();
  const order={turn:initial.turn,revision:initial.revision,requestId:'http-retry',orders:[{kind:'move',source:0,target:1,ships:4}]};
  check((await api('orders',{method:'PUT',body:order})).status===200,'HTTP order accepted');

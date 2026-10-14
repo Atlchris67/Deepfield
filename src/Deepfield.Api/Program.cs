@@ -45,7 +45,7 @@ bool CanAccelerate(HttpContext c)=>localTest && c.Connection.RemoteIpAddress is 
     && (c.Request.Host.Host is "localhost" or "127.0.0.1" or "[::1]")
     && !c.Request.Headers.ContainsKey("Forwarded") && !c.Request.Headers.ContainsKey("X-Forwarded-For") && !c.Request.Headers.ContainsKey("CF-Connecting-IP");
 app.MapGet("/health",()=>Results.Ok(new{status="ok"}));
-app.MapGet("/api/campaign",async(HttpContext c)=>Results.Ok(new{campaign=await store.Execute(g=>Rules.Observe(g,Team(c)),false),localTest=CanAccelerate(c)}));
+app.MapGet("/api/campaign",async(HttpContext c, IGameStore db)=>Results.Ok(new{campaign=await db.Execute(g=>Rules.Observe(g,Team(c)),false),localTest=CanAccelerate(c)}));
 app.MapPut("/api/orders",async(HttpContext c,Submission body)=>Results.Ok(new{revision=await store.Execute(g=>
 {
     if(g.Clans[Team(c)].Ai) throw new RuleException("This clan is AI-controlled.");
