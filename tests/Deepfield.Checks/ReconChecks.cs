@@ -35,6 +35,18 @@ public static class ReconChecks
         Check(JsonSerializer.Serialize(Rules.Observe(a,0))==JsonSerializer.Serialize(Rules.Observe(b,0)),"Risk estimates and visible state do not leak hidden fleet changes");
         var order=new Order("recon",0,1,1,"close");
         Check(Recon.Roll(a,0,order,0)==Recon.Roll(b,0,order,0),"Recon roll is independent of hidden enemy strength");
+        Rules.Validate(Rules.Observe(a,0),[order]);Rules.Validate(Rules.Observe(b,0),[order]);
+        Check(JsonSerializer.Serialize(Rules.PlanAi(Rules.Observe(a,0)))==JsonSerializer.Serialize(Rules.PlanAi(Rules.Observe(b,0))),"Paired hidden states permit identical missions and AI choices");
+        var permutationA=Fixture();var permutationB=Fixture();
+        List<Order> missions=[new("recon",0,1,1,"distant"),order,new("recon",0,1,1,"deep"),order];
+        Rules.Submit(permutationA,0,new(1,0,"first-request",missions),now);
+        Rules.Submit(permutationB,0,new(1,0,"different-request",[new("collector",0),..missions.AsEnumerable().Reverse()]),now);
+        Rules.Resolve(permutationA,permutationA.Deadline);Rules.Resolve(permutationB,permutationB.Deadline.AddHours(2));
+        string Outcomes(Game campaign)=>JsonSerializer.Serialize(campaign.Clans[0].Intelligence.OrderBy(i=>i.Id).Select(i=>new{i.Id,i.Returned}));
+        Check(Outcomes(permutationA)==Outcomes(permutationB),"Request IDs, permutations, unrelated orders and resolution wall clock cannot reroll missions");
+        var noCombatShips=Fixture();noCombatShips.Stars[0].Ships[0]=0;var moveRejected=false;
+        try{Rules.Validate(Rules.Observe(noCombatShips,0),[new("move",0,1,1)]);}catch(RuleException){moveRejected=true;}
+        Check(moveRejected,"Scout inventory cannot be spent as ordinary moving/combat ships");
         Check(new ReconRates()==new ReconRates(90,65,35),"Initial distant/close/deep return targets are 90/65/35");
         foreach(var invalid in new List<Order>[] { [new("recon",0,11,1,"deep")], [new("recon",0,1,2,"deep")], [new("recon",0,1,1,"bogus")], Enumerable.Repeat(order,5).ToList() })
         {var rejected=false;try{Rules.Validate(Rules.Observe(a,0),invalid);}catch(RuleException){rejected=true;}Check(rejected,"Reject illegal scout mission or aggregate oversubscription");}

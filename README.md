@@ -1,5 +1,13 @@
 # Deepfield
 
+## Scout reconnaissance increment
+
+Dedicated scouts cost **3 credits**; existing combat/colony ships still cost 5. Build scouts on your colony and use **Scout reconnaissance** on a later turn. Each mission uses one existing scout, visits an adjacent charted system, and attempts to return to its launch colony within the same turn. Scouts cannot fight, colonize, or use ordinary fleet movement. Survivors can be reused next turn; failed missions consume the scout. Grounded scouts are destroyed if their colony falls.
+
+Choose **distant (90%)**, **close (65%)**, or **deep (35%)** initial safe-return targets. These are provisional campaign settings, with no secret defense modifiers. Successful distant missions report contact and ownership; close adds a combat-fleet size band; deep adds exact combat ships, scouts and collectors. Full information requires escape. A destroyed scout reports only confirmed enemy contact or unconfirmed contact, never exact counts or ownership.
+
+The **Clan intelligence** panel stores private reports with turn, timestamp and observation phase. Reports sample the simultaneous-arrival phase before combat and remain explicitly last-known, not live views. New snapshots never overwrite old history. The last 200 reports are retained. The running legacy playtest is unchanged; this development checkout and browser tests use isolated state and port **5097**. See [roadmap and migration boundaries](docs/ROADMAP.md).
+
 An original, small daily-turn space strategy game for family clans. Guide the Aurora Federation or Ember Empire from a shared homeworld toward a simplified Kardashev Type III victory. The playable slice includes exploration, automatic colony expeditions, ship construction, simultaneous combat, collectors, private clan messages and turn reports. Empire runs as AI by default; both clans can be human-controlled.
 
 **Status:** local MVP; no live deployment. One shared homeworld, treasury and order list per clan is provisional. No license has been selected.

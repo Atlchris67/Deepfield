@@ -1,5 +1,16 @@
 # Verification — 2026-10-14, Piedmont
 
+## Scout increment — 2026-10-15
+
+Isolated checkout `Deepfield-scouts`, branch `feature/scout-isr`; no running-playtest files, processes, keys or save were changed.
+
+- C# build passed with zero warnings/errors; all 43 prior engine/persistence checks plus 27 reconnaissance/migration checks passed.
+- 31 live API/browser checks passed on port 5097, including scout construction, a server-committed mission with its response deliberately dropped, safe retry, historical report rendering/aging, and cross-clan UI/data isolation.
+- TypeScript build/unused checks and Vite production build passed. Mobile intelligence screenshot inspected (`test-results/scout-intelligence-mobile.png`). The browser fixture deliberately uses 100% return rates for its full-report scenario; engine fixtures separately verify 90/65/35 defaults and deterministic destruction for every tier.
+- Paired hidden-state fixtures produce equal views, estimates, legal mission validation and AI plans. Request IDs, order permutations, unrelated orders and resolution wall-clock changes cannot reroll mission outcomes.
+- Schema-1 fixture migration preserves pending orders/receipt comparisons, fleet counts and deadline, invents no historical intelligence, and commits through the file store. Reconnaissance loss/report persistence is verified across reopening and duplicate resolution.
+- PostgreSQL integration remains unexecuted without a disposable server. No merge or deployment.
+
 ## Independent-review fixes
 
 All three P2 findings have regression coverage:
