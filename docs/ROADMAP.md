@@ -21,4 +21,7 @@ Economy/defense implementation is isolated on `feature/economy-defenses`, stacke
 
 Collector-shading blockades and the custom clan ship designer ("phase 42") are deferred. No custom hull designer, economy overhaul or unreviewed combat replacement belongs in the scout increment.
 
+## Counter simulation checkpoint
+
+`feature/combat-counter-lab` adds a separate console simulator, not a production engine reference. The five-hull matrix and exact deterministic candidate combat are described in [COUNTER_LAB.md](COUNTER_LAB.md). Its executable suite passes 177,199 assertions over 59,049 mirrored fleet pairs and every directed equal-budget matchup. This does not prove campaign balance or authorize replacing existing combat; typed fleet persistence, migration, scout composition, AI decisions, UI orders and siege interactions remain the next integration increment.
 Private entropy is generated once for new campaigns. Legacy saves receive it under the store lock/transaction and commit that migration before executing a requested operation, so a failed first operation cannot reroll it. Read-only initialization also persists it. No API/report DTO exposes the entropy. Pure replay fixtures supply fixed test-only entropy; production campaign creation uses cryptographic randomness. This is gameplay state, not an authentication credential.

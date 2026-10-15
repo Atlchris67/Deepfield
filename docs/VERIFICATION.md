@@ -1,5 +1,9 @@
 # Verification — 2026-10-14, Piedmont
 
+## Standalone counter-combat lab — 2026-10-15
+
+`dotnet run --project tools/Deepfield.CombatLab --disable-build-servers` passed **177,199 assertions**, exhaustively comparing **59,049 mirrored composition pairs** and all **20 directed equal-budget matchups**. Checked input immutability, survivor bounds, maximum-size arithmetic and malformed counts. The project is built by the solution but not referenced by the API/engine; it changes no campaign or save behavior. No browser rerun is needed for this console-only increment; the 34-check UI suite from the preceding commit remains the latest app evidence.
+
 ## Opt-in economy/defense increment — 2026-10-15
 
 - C# build passed, zero warnings/errors. 43 baseline + 27 reconnaissance + 14 economy/defense checks passed (84 total).
@@ -64,4 +68,9 @@ The authorized destination is `https://github.com/Atlchris67/Deepfield`, initial
 ## Review fix: unpredictable reconnaissance — 2026-10-15
 
 75 engine/persistence checks (43 baseline + 32 reconnaissance) and 32 API/browser checks pass. Added paired-public-state/private-entropy checks, reconstruction attempts for six public route/tier inputs, response privacy, migration reopening and failed-first-operation retry stability. C# build has zero warnings/errors; TypeScript checks and frontend build pass. PostgreSQL migration code compiles but remains untested against a server. No live playtest changes.
+
+
+## Targeted review corrections
+Private reconnaissance entropy: scout branch 75 engine/store checks and 32 API/browser assertions; economy stack 89 checks and 35 API/browser assertions. Both built without warnings and passed frontend build/lint. PostgreSQL runtime remains untested.
+Counter correction: 474,448 assertions passed, including 295,245 one-hull reinforcement comparisons, four scales of the reported regression, and 2,000 larger mixed fleets. The model now uses simultaneous maximum-value salvos and decisive rout; campaign balance is not established.
 
