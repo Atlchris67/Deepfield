@@ -1,5 +1,16 @@
 # Verification — 2026-10-14, Piedmont
 
+## Scout increment — 2026-10-15
+
+Isolated checkout `Deepfield-scouts`, branch `feature/scout-isr`; no running-playtest files, processes, keys or save were changed.
+
+- C# build passed with zero warnings/errors; all 43 prior engine/persistence checks plus 27 reconnaissance/migration checks passed.
+- 31 live API/browser checks passed on port 5097, including scout construction, a server-committed mission with its response deliberately dropped, safe retry, historical report rendering/aging, and cross-clan UI/data isolation.
+- TypeScript build/unused checks and Vite production build passed. Mobile intelligence screenshot inspected (`test-results/scout-intelligence-mobile.png`). The browser fixture deliberately uses 100% return rates for its full-report scenario; engine fixtures separately verify 90/65/35 defaults and deterministic destruction for every tier.
+- Paired hidden-state fixtures produce equal views, estimates, legal mission validation and AI plans. Request IDs, order permutations, unrelated orders and resolution wall-clock changes cannot reroll mission outcomes.
+- Schema-1 fixture migration preserves pending orders/receipt comparisons, fleet counts and deadline, invents no historical intelligence, and commits through the file store. Reconnaissance loss/report persistence is verified across reopening and duplicate resolution.
+- PostgreSQL integration remains unexecuted without a disposable server. No merge or deployment.
+
 ## Independent-review fixes
 
 All three P2 findings have regression coverage:
@@ -41,3 +52,8 @@ A copy of the independent reviewer's harness was also rerun against the fixed pr
 ## Publication
 
 The authorized destination is `https://github.com/Atlchris67/Deepfield`, initially empty. Work is committed in small checkpoints on `feature/deepfield-mvp`. A draft PR requires a separate agreed base branch; no `main` branch or license is silently initialized and no merge is performed.
+
+## Review fix: unpredictable reconnaissance — 2026-10-15
+
+75 engine/persistence checks (43 baseline + 32 reconnaissance) and 32 API/browser checks pass. Added paired-public-state/private-entropy checks, reconstruction attempts for six public route/tier inputs, response privacy, migration reopening and failed-first-operation retry stability. C# build has zero warnings/errors; TypeScript checks and frontend build pass. PostgreSQL migration code compiles but remains untested against a server. No live playtest changes.
+

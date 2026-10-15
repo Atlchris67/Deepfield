@@ -10,7 +10,7 @@ const root=resolve('..');
 const artifacts=resolve(root,'test-results'); await mkdir(artifacts,{recursive:true});
 const save=resolve(artifacts,`smoke-${Date.now()}.json`);
 const keys=[randomBytes(24).toString('hex'),randomBytes(24).toString('hex')];
-const base='http://127.0.0.1:5087';
+const base='http://127.0.0.1:5097';
 let processHandle,browser;
 let count=0;
 function check(value,name){assert.ok(value,name);count++;console.log('PASS '+name);}
@@ -31,6 +31,7 @@ try{
  const publicHostStatus=await new Promise((done,fail)=>{const req=httpRequest(base+'/api/local/advance',{method:'POST',headers:{Host:'starzdeepfield.com',Authorization:'Bearer '+keys[0],'Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>done(res.statusCode));});req.on('error',fail);req.end(JSON.stringify({turn:1}));});
  check(publicHostStatus===404,'Public hostname acceleration denied');
  const initial=await state();
+ check(!JSON.stringify(initial).toLowerCase().includes('reconentropy'),'Campaign API omits private reconnaissance entropy');
  const order={turn:initial.turn,revision:initial.revision,requestId:'http-retry',orders:[{kind:'move',source:0,target:1,ships:4}]};
  check((await api('orders',{method:'PUT',body:order})).status===200,'HTTP order accepted');
  check((await api('orders',{method:'PUT',body:order})).status===200&&(await state()).revision===1,'HTTP retry idempotent');
@@ -45,7 +46,10 @@ try{
  check(advances.filter(r=>r.advanced).length===1&&(await state()).turn===2,'Concurrent HTTP resolution advances once');
  check((await state()).stars[1].owner===0,'HTTP resolution creates colony');
  await stop();
- const snapshot=JSON.parse(await readFile(save,'utf8'));snapshot.Deadline='2026-01-01T00:00:00Z';await writeFile(save,JSON.stringify(snapshot));
+ const snapshot=JSON.parse(await readFile(save,'utf8'));snapshot.Deadline='2026-01-01T00:00:00Z';
+ // Isolated deterministic browser fixture; never edits the live playtest save.
+ snapshot.ReconRates={Distant:100,Close:100,Deep:100};snapshot.Stars[6].Owner=1;snapshot.Stars[6].Ships[1]=7;snapshot.Stars[6].Scouts[1]=2;
+ await writeFile(save,JSON.stringify(snapshot));
  await start();
  for(let i=0;i<30&&(await state()).turn===2;i++)await new Promise(r=>setTimeout(r,100));
  check((await state()).turn===3&&Date.parse((await state()).deadline)>Date.now()+23*3600000,'Overdue process restart resolves once with future deadline');
@@ -78,6 +82,23 @@ try{
  const committedRevision=(await state()).revision;
  await page.getByRole('button',{name:'Retry submission',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  check(submissions[0].requestId!==submissions[1].requestId&&JSON.stringify(submissions[1])===JSON.stringify(submissions[2])&&(await state()).revision===committedRevision,'Corrected draft uses fresh ID; lost-response retry is identical and commits once');
+ await page.getByRole('button',{name:'Remove order 1',exact:true}).click();
+ await page.getByLabel('Action at Hearth').selectOption('scoutbuild');await page.getByLabel('Ships',{exact:true}).fill('2');await page.getByRole('button',{name:'+ Add to draft'}).click();
+ await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
+ await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ check((await state()).stars[0].scouts[0]===2,'Browser builds dedicated 3-credit scouts');
+ await page.getByLabel('Action at Hearth').selectOption('recon');await page.getByLabel('Destination').selectOption('6');await page.getByLabel('Recon mission').selectOption('deep');await page.getByRole('button',{name:'+ Add to draft'}).click();
+ await page.route('**/api/orders',async route=>{await route.fetch();await route.abort('failed');},{times:1});
+ await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('alert').waitFor();
+ await page.getByRole('button',{name:'Retry submission',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
+ check((await state()).orders.length===1&&(await state()).orders[0].mission==='deep','Interrupted recon submission preserves mission and commits once');
+ await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await page.getByText('Exact at observation: 7 enemy combat ships',{exact:false}).waitFor();
+ const observed=await state();const observedTurn=observed.intelligence[0].turn;
+ check(observed.intelligence.length===1&&observed.intelligence[0].returned&&observed.stars[6].ships===null&&(await state(1)).intelligence.length===0,'Deep ISR is private historical intelligence, never live enemy vision');
+ await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ check((await state()).intelligence[0].turn===observedTurn&&await page.getByText('Last observed turn '+observedTurn,{exact:false}).count()===1,'Browser retains dated intelligence as turns age');
+ await page.screenshot({path:resolve(artifacts,'scout-intelligence-mobile.png'),fullPage:true});
  await page.getByLabel('Call sign').fill('Private Aurora identity');
  await page.getByLabel('Message',{exact:true}).fill('Unsent Aurora invasion plan');
  await page.getByRole('button',{name:'+ Add to draft'}).click();
@@ -87,6 +108,7 @@ try{
  await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
  check(await page.getByLabel('Message',{exact:true}).inputValue()===''&&await page.getByLabel('Call sign').inputValue()==='Commander','Switching clans clears private unsent message and author');
  check(await page.getByRole('status').innerText()===''&&await page.locator('.queue li').count()===0&&await page.getByRole('alert').count()===0,'Switching clans clears orders, notices and errors');
+ check(await page.locator('.intelReport').count()===0,'Switching clans clears previous clan reconnaissance reports');
  check(await page.getByLabel('Ships',{exact:true}).inputValue()==='2'&&await page.getByLabel('Destination').inputValue()==='-1','Switching clans resets order editor state');
  await browser.close();browser=null;
  await stop(); await start({LocalTest:'false'});
