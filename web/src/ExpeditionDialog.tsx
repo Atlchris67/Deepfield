@@ -28,7 +28,7 @@ export function ExpeditionDialog({stars,team,typed,draft,initialSource,initialTa
   <table><thead><tr><th>Ship type</th><th>Available</th><th>Send</th></tr></thead><tbody>{rows.map((row,i)=>{const count=available(star,team,typed,i,draft);return <tr key={row.id}><th scope="row">{row.label}</th><td data-testid={'available-'+row.id}>{count}</td><td><input aria-label={'Send '+row.label} type="number" min="0" max={Math.min(100,count)} step="1" value={counts[i]} onChange={e=>setCounts(old=>old.map((n,j)=>j===i?e.target.value:n))}/>{validation.issues.filter(issue=>issue.row===i).map(issue=><small key={issue.code} className="error">{issue.message}</small>)}</td></tr>;})}</tbody></table>
   <p><strong>{total || 0} ships selected</strong>. Maximum 100 per {typed?'hull movement order':'movement order'}; one order per selected type. Multiple orders may exceed 100 total. Maximum 24 orders per turn.</p>
   <p>Settlement needs two surviving {typed?'interceptors':'ships'} after combat; they become habitats. Scouts travel through reconnaissance orders and cannot settle colonies.</p>
-  {validation.issues.filter(issue=>issue.row===undefined).map(issue=><p key={issue.code} className="hint" role="status">{issue.message}</p>)}
-  </fieldset></div>{error&&<p role="alert" className="error">{error}</p>}<div className="dialogActions"><button className="quiet" onClick={onClose}>Cancel</button><button disabled={busy||invalid} onClick={()=>void add()}>{busy?'Checking availability…':'Add expedition to draft'}</button></div>
+
+  </fieldset></div>{validation.issues.filter(issue=>issue.row===undefined).map(issue=><p key={issue.code} className="hint" role="status">{issue.message}</p>)}{error&&<p role="alert" className="error">{error}</p>}<div className="dialogActions"><button className="quiet" onClick={onClose}>Cancel</button><button disabled={busy||invalid} onClick={()=>void add()}>{busy?'Checking availability…':'Add expedition to draft'}</button></div>
  </dialog>;
 }
