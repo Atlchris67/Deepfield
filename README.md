@@ -97,3 +97,5 @@ The repository now has an agreed documentation baseline on main. Development is 
 
 ## Typed fleet preview
 See [typed fleet rules and local preview](docs/TYPED_FLEETS.md) for opt-in hulls, the expedition selector, settlement timing and a separate port/save path. Existing campaigns retain generic ship rules.
+
+Optional future [build signing workflow](docs/SIGNING.md): dry-run planning and source-only checks, with no paid runtime dependency. No certificate/provider is selected, and application execution remains paused under the documented Windows block.
