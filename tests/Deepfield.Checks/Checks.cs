@@ -82,9 +82,25 @@ public static class Checks
             var pg=new PostgresGameStore(connection,New);await pg.Initialize();
             Console.WriteLine("PostgreSQL test requires a disposable database with no existing campaign.");
             await StoreChecks(pg,()=>new PostgresGameStore(connection,New));
+            await PostgresMigrationCheck(connection);
         }
         else Console.WriteLine("SKIP PostgreSQL integration: DEEPFIELD_TEST_POSTGRES not configured.");
         Console.WriteLine($"{count} checks passed. Test save: {path}");
+    }
+    static async Task PostgresMigrationCheck(string connection)
+    {
+        var restricted=new Npgsql.NpgsqlConnectionStringBuilder(connection){MaxPoolSize=1,Timeout=3}.ConnectionString;
+        // Disposable integration database only: emulate a legacy save without entropy.
+        await using(var db=new Npgsql.NpgsqlConnection(restricted))
+        {
+            await db.OpenAsync();
+            await using var remove=new Npgsql.NpgsqlCommand("UPDATE deepfield_campaign SET state=state-'ReconEntropy' WHERE id=1",db);
+            await remove.ExecuteNonQueryAsync();
+        }
+        var store=new PostgresGameStore(restricted,New);string? migrated=null;
+        try{await store.Execute<bool>(g=>{migrated=g.ReconEntropy;throw new RuleException("failed operation after migration");});}catch(RuleException){}
+        Assert(migrated is not null,"Single-slot PostgreSQL pool finishes legacy entropy migration without self-deadlock");
+        Assert(await new PostgresGameStore(restricted,New).Execute(g=>g.ReconEntropy,false)==migrated,"PostgreSQL entropy migration survives failed operation and reopening");
     }
     static async Task StoreChecks(IGameStore store,Func<IGameStore> restart)
     {

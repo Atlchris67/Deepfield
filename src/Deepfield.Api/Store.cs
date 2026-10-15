@@ -53,26 +53,30 @@ public sealed class PostgresGameStore(string connection, Func<Game> create) : IG
     public async Task<T> Execute<T>(Func<Game,T> operation, bool write = true)
     {
         await using var db = new NpgsqlConnection(connection); await db.OpenAsync();
-        await using var tx = await db.BeginTransactionAsync();
-        await using var read = new NpgsqlCommand("SELECT state::text FROM deepfield_campaign WHERE id=1 FOR UPDATE",db,tx);
-        var json=(string)(await read.ExecuteScalarAsync() ?? throw new InvalidOperationException("Campaign missing."));
-        var migrateEntropy=GameCodec.NeedsEntropyMigration(json);
-        var game=GameCodec.Read(json);
-        if(migrateEntropy)
+        while(true)
         {
-            await using var migrate=new NpgsqlCommand("UPDATE deepfield_campaign SET state=$1::jsonb WHERE id=1",db,tx);
-            migrate.Parameters.AddWithValue(JsonSerializer.Serialize(game));await migrate.ExecuteNonQueryAsync();
-            await tx.CommitAsync();
-            // Reacquire and reread after the migration commit, never apply an operation to stale state.
-            return await Execute(operation,write);
+            await using var tx = await db.BeginTransactionAsync();
+            await using var read = new NpgsqlCommand("SELECT state::text FROM deepfield_campaign WHERE id=1 FOR UPDATE",db,tx);
+            var json=(string)(await read.ExecuteScalarAsync() ?? throw new InvalidOperationException("Campaign missing."));
+            var migrateEntropy=GameCodec.NeedsEntropyMigration(json);
+            var game=GameCodec.Read(json);
+            if(migrateEntropy)
+            {
+                await using var migrate=new NpgsqlCommand("UPDATE deepfield_campaign SET state=$1::jsonb WHERE id=1",db,tx);
+                migrate.Parameters.AddWithValue(JsonSerializer.Serialize(game));await migrate.ExecuteNonQueryAsync();
+                await tx.CommitAsync();
+                // Dispose this transaction, then reacquire and reread on the same connection.
+                // Never require a second pool slot while retaining the first one.
+                continue;
+            }
+            var result=operation(game);
+            if(write)
+            {
+                await using var save=new NpgsqlCommand("UPDATE deepfield_campaign SET state=$1::jsonb WHERE id=1",db,tx);
+                save.Parameters.AddWithValue(JsonSerializer.Serialize(game)); await save.ExecuteNonQueryAsync();
+            }
+            await tx.CommitAsync(); return result;
         }
-        var result=operation(game);
-        if(write || migrateEntropy)
-        {
-            await using var save=new NpgsqlCommand("UPDATE deepfield_campaign SET state=$1::jsonb WHERE id=1",db,tx);
-            save.Parameters.AddWithValue(JsonSerializer.Serialize(game)); await save.ExecuteNonQueryAsync();
-        }
-        await tx.CommitAsync(); return result;
     }
 }
 public sealed class TurnWorker(IGameStore store, ILogger<TurnWorker> logger) : BackgroundService
