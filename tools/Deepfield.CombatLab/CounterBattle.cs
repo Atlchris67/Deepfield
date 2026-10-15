@@ -1,1 +1,1 @@
-// Counter model moved to Deepfield.Engine/Combat; the lab exercises the shared implementation.
+// The simulator uses the shared opt-in model in Deepfield.Engine/Combat.

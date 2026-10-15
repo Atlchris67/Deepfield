@@ -11,14 +11,14 @@ public static class TypedFleetChecks
         var now=DateTimeOffset.Parse("2026-10-15T12:00:00Z");var checks=0;
         void Check(bool value,string label){if(!value)throw new Exception(label);checks++;Console.WriteLine("PASS "+label);}
         void Reject(Action act,string label){try{act();}catch(RuleException){Check(true,label);return;}throw new Exception("Expected rejection: "+label);}
-        Game New()=>Rules.Create(42,now,false,1,1);
+        Game New()=>Rules.Create(42,now,false,1,1, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         var g=New();Check(g.CombatVersion==1&&g.Stars[0].Fleets![0].SequenceEqual(new[]{8,0,0,0,0}),"Typed preview initializes legacy starting fleet as interceptors");
         Reject(()=>Rules.Validate(Rules.Observe(g,0),[new("build",0,Ships:5,Hull:"cruiser")]),"Typed build costs cannot exceed treasury");
         Reject(()=>Rules.Validate(Rules.Observe(g,0),[new("move",0,1,1,Hull:"cruiser")]),"Aggregate fleet cannot substitute for missing selected hull");
         Reject(()=>Rules.Validate(Rules.Observe(g,0),[new("move",0,1,5,Hull:"interceptor"),new("move",0,6,4)]),"Named/default interceptor orders share one inventory");
         Reject(()=>Rules.Validate(Rules.Observe(g,0),[new("build",0,Ships:1,Hull:"cruiser"),new("move",0,1,1,Hull:"cruiser")]),"New typed ships cannot move in their construction turn");
         Reject(()=>Rules.Validate(Rules.Observe(g,0),[new("build",0,Ships:1,Hull:"unknown")]),"Unknown hull is rejected");
-        Reject(()=>Rules.Validate(Rules.Observe(Rules.Create(42,now,false),0),[new("build",0,Ships:1,Hull:"cruiser")]),"Legacy campaign cannot silently activate typed ship orders");
+        Reject(()=>Rules.Validate(Rules.Observe(Rules.Create(42,now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),0),[new("build",0,Ships:1,Hull:"cruiser")]),"Legacy campaign cannot silently activate typed ship orders");
         g.Stars[0].Fleets![0][2]=10000;TypedCombat.Sync(g.Stars[0]);g.Clans[0].Credits=100;
         Reject(()=>Rules.Validate(Rules.Observe(g,0),[new("build",0,Ships:1,Hull:"cruiser")]),"Global per-class cap prevents unresolvable oversized stacks");
         g=New();Rules.Submit(g,0,new(1,0,"typed-build",[new("build",0,Ships:2,Hull:"cruiser"),new("build",0,Ships:1,Hull:"disruptor")]),now);Rules.Resolve(g,g.Deadline);
@@ -52,7 +52,7 @@ public static class TypedFleetChecks
         Check(TypedCombat.ChooseHull(Rules.Observe(a,1),Rules.Observe(a,1).Stars[11])==0,"AI does not treat old composition as current intelligence");
         for(var schema=1;schema<=3;schema++)
         {
-            var old=Rules.Create(42,now,false);var req=new Submission(1,0,"legacy",[new("build",0,Ships:2)]);Rules.Submit(old,0,req,now);
+            var old=Rules.Create(42,now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");var req=new Submission(1,0,"legacy",[new("build",0,Ships:2)]);Rules.Submit(old,0,req,now);
             var json=JsonNode.Parse(JsonSerializer.Serialize(old))!;json["Schema"]=schema;json.AsObject().Remove("CombatVersion");foreach(var star in json["Stars"]!.AsArray())star!.AsObject().Remove("Fleets");
             var migrated=GameCodec.Read(json.ToJsonString());
             Check(migrated.Schema==4&&migrated.CombatVersion==0&&migrated.Stars[0].Ships[0]==8&&migrated.Deadline==old.Deadline&&Rules.Submit(migrated,0,req,now)==1,"Schema "+schema+" migration preserves legacy fleet, rules, deadlines and receipt comparison");
@@ -61,7 +61,7 @@ public static class TypedFleetChecks
         var store=new FileGameStore(path,New);var typedRequest=new Submission(1,0,"persistent-typed",[new("build",0,Ships:2,Hull:"cruiser")]);
         await store.Execute(c=>Rules.Submit(c,0,typedRequest,now));var results=await Task.WhenAll(Enumerable.Range(0,12).Select(_=>new FileGameStore(path,New).Execute(c=>Rules.Resolve(c,now.AddDays(1)))));
         Check(results.Count(r=>r)==1&&await store.Execute(c=>c.Stars[0].Fleets![0][2],false)==2&&await store.Execute(c=>Rules.Submit(c,0,typedRequest,now.AddDays(1)))==1,"Concurrent typed resolution and reopening commit one fleet/order receipt");
-        g=Rules.Create(71,now,true,1,1);for(var turn=0;turn<80&&g.Winner==null;turn++){Rules.Validate(Rules.Observe(g,1),Rules.PlanAi(Rules.Observe(g,1)));Rules.Resolve(g,g.Deadline);}
+        g=Rules.Create(71,now,true,1,1, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");for(var turn=0;turn<80&&g.Winner==null;turn++){Rules.Validate(Rules.Observe(g,1),Rules.PlanAi(Rules.Observe(g,1)));Rules.Resolve(g,g.Deadline);}
         Check(g.Winner==1,"Typed AI reaches victory with legal orders and colony escorts");
         Console.WriteLine($"{checks} typed-fleet integration checks passed.");
     }

@@ -16,6 +16,11 @@ public record Intelligence(string Id, int Star, int Turn, DateTimeOffset At, str
 
 public static class GameCodec
 {
+    public static bool NeedsEntropyMigration(string json)
+    {
+        using var document=JsonDocument.Parse(json);
+        return !document.RootElement.TryGetProperty("ReconEntropy",out var value)||value.ValueKind==JsonValueKind.Null;
+    }
     public static Game Read(string json)
     {
         var game = JsonSerializer.Deserialize<Game>(json) ?? throw new InvalidOperationException("Invalid campaign.");
@@ -28,6 +33,8 @@ public static class GameCodec
             if(Enumerable.Range(0,2).Any(t=>Enumerable.Range(0,5).Any(h=>game.Stars.Sum(s=>(long)s.Fleets![t][h])>10000)))throw new InvalidOperationException("Typed fleet capacity exceeded.");
             foreach(var star in game.Stars)TypedCombat.Sync(star);
         }
+        game.ReconEntropy ??= Recon.NewEntropy();
+        Recon.ValidateEntropy(game.ReconEntropy);
         // Additive migration: existing ships, pending orders, serialized receipt payloads,
         // deadlines and history are retained. No observations are invented retrospectively.
         game.Schema = 4;
@@ -37,12 +44,18 @@ public static class GameCodec
 
 public static class Recon
 {
+    public static string NewEntropy()=>Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    public static void ValidateEntropy(string value)
+    {
+        if(value.Length!=64||!value.All(Uri.IsHexDigit))throw new InvalidOperationException("Invalid private reconnaissance entropy.");
+    }
     public static bool ValidMission(string? mission) => mission is "distant" or "close" or "deep";
     public static string Band(int count) => count switch { 0 => "0", <= 4 => "1–4", <= 9 => "5–9", _ => "10+" };
     public static int Roll(Game g, int team, Order order, int occurrence)
     {
-        var key = FormattableString.Invariant($"recon-v1|{g.Seed}|{g.Turn}|{team}|{order.Source}|{order.Target}|{order.Mission}|{occurrence}");
-        return (int)(BinaryPrimitives.ReadUInt32LittleEndian(SHA256.HashData(Encoding.UTF8.GetBytes(key))) % 100);
+        var key = FormattableString.Invariant($"recon-v2|{g.Seed}|{g.Turn}|{team}|{order.Source}|{order.Target}|{order.Mission}|{occurrence}");
+        var entropy=g.ReconEntropy??throw new InvalidOperationException("Campaign entropy must be migrated and persisted before reconnaissance.");
+        return (int)(BinaryPrimitives.ReadUInt32LittleEndian(HMACSHA256.HashData(Convert.FromHexString(entropy),Encoding.UTF8.GetBytes(key))) % 100);
     }
     public static void Resolve(Game g, DateTimeOffset at)
     {

@@ -28,6 +28,32 @@ foreach(var left in fleets)foreach(var right in fleets)
 var huge=CounterBattle.Resolve(new([10000,10000,10000,10000,10000]),new([10000,10000,10000,10000,10000]));
 Check(huge.Winner=="draw","Maximum supported equal fleets must resolve without overflow");
 var rejected=false;try{CounterBattle.Resolve(new([-1,0,0,0,0]),new([0,0,0,0,0]));}catch(ArgumentException){rejected=true;}Check(rejected,"Negative fleets must be rejected");
-Console.WriteLine($"PASS {checks} assertions across 59,049 mirrored composition pairs and all 20 directed equal-budget matchups.");
+var reinforcementCases=0;
+foreach(var left in fleets)foreach(var right in fleets)
+{
+    var baseline=CounterBattle.Resolve(left,right);
+    for(var hull=0;hull<5;hull++)
+    {
+        var reinforced=left.Counts.ToArray();reinforced[hull]++;
+        var result=CounterBattle.Resolve(new(reinforced),right);
+        Check(result.Left.Value>=baseline.Left.Value,"Adding any hull cannot reduce own surviving value or turn victory into defeat");reinforcementCases++;
+    }
+}
+foreach(var scale in new[]{1,10,100,1000})
+{
+    var opponent=Fleet.Single(Hull.TorpedoBoat,10*scale);
+    var original=CounterBattle.Resolve(Fleet.Single(Hull.Interceptor,8*scale),opponent);
+    var reinforced=CounterBattle.Resolve(new([8*scale,0,scale,0,0]),opponent);
+    Check(original.Winner=="left"&&reinforced.Winner=="left"&&reinforced.Left.Value>=original.Left.Value,"Reviewer reinforcement fixture and scaled variants cannot reverse victory");
+}
+var random=new Random(42017);
+for(var sample=0;sample<2000;sample++)
+{
+    var left=new Fleet(Enumerable.Range(0,5).Select(_=>random.Next(0,5001)).ToArray());
+    var right=new Fleet(Enumerable.Range(0,5).Select(_=>random.Next(0,5001)).ToArray());
+    var larger=left.Counts.Select(count=>count+random.Next(0,1001)).ToArray();
+    Check(CounterBattle.Resolve(new(larger),right).Left.Value>=CounterBattle.Resolve(left,right).Left.Value,"Larger mixed fleets preserve reinforcement monotonicity");
+}
+Console.WriteLine($"PASS {checks} assertions: 59,049 mirrored pairs, {reinforcementCases} one-hull reinforcement cases, 4 scaled reviewer fixtures, 2,000 larger mixed cases, and all 20 directed equal-budget matchups.");
 Console.WriteLine("Shared counter model; used only by explicitly opted-in typed preview campaigns.");
 Console.WriteLine(JsonSerializer.Serialize(hulls.Select(h=>new{Hull=h.ToString(),Cost=CounterBattle.Cost(h),Counters=hulls.Where(o=>CounterBattle.Counters(h,o)).Select(o=>o.ToString())}),new JsonSerializerOptions{WriteIndented=true}));
