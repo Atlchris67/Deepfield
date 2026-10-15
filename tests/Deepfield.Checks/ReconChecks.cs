@@ -59,11 +59,11 @@ public static class ReconChecks
         foreach(var star in legacy["Stars"]!.AsArray())star!.AsObject().Remove("Scouts");
         foreach(var clan in legacy["Clans"]!.AsArray())clan!.AsObject().Remove("Intelligence");
         var migrated=GameCodec.Read(legacy.ToJsonString());
-        Check(migrated.Schema==3&&migrated.Stars[0].Ships[0]==8&&migrated.Deadline==g.Deadline&&migrated.Clans[0].Intelligence.Count==0,"Schema 1 migration preserves campaign without fabricating intelligence");
+        Check(migrated.Schema==4&&migrated.Stars[0].Ships[0]==8&&migrated.Deadline==g.Deadline&&migrated.Clans[0].Intelligence.Count==0,"Schema 1 migration preserves campaign without fabricating intelligence");
         Check(Rules.Submit(migrated,0,request,now)==1&&migrated.Clans[0].Orders.Count==1,"Legacy receipt bytes still match retried old orders");
         var directory=Path.Combine(Path.GetTempPath(),"deepfield-recon-"+Guid.NewGuid());Directory.CreateDirectory(directory);var path=Path.Combine(directory,"legacy.json");await File.WriteAllTextAsync(path,legacy.ToJsonString());
         var store=new FileGameStore(path,()=>throw new Exception("Expected existing save"));await store.Execute(x=>Rules.Submit(x,0,request,now));
-        Check(GameCodec.Read(await File.ReadAllTextAsync(path)).Schema==3,"File store atomically persists compatible upgraded save");
+        Check(GameCodec.Read(await File.ReadAllTextAsync(path)).Schema==4,"File store atomically persists compatible upgraded save");
         var reconPath=Path.Combine(directory,"recon.json");var reconStore=new FileGameStore(reconPath,()=>Mission("deep",false));
         await reconStore.Execute(x=>Rules.Resolve(x,due));var reopened=new FileGameStore(reconPath,()=>throw new Exception("Expected save"));
         Check(!await reopened.Execute(x=>Rules.Resolve(x,due))&&await reopened.Execute(x=>x.Clans[0].Intelligence.Count,false)==1&&await reopened.Execute(x=>x.Stars[0].Scouts[0],false)==3,"Recon losses and reports persist once across restart/retry");

@@ -12,18 +12,25 @@ public record ReconRates(int Distant = 90, int Close = 65, int Deep = 35)
 }
 public record Intelligence(string Id, int Star, int Turn, DateTimeOffset At, string Phase, string Mission,
     bool Returned, bool? EnemyPresent, bool OwnerObserved, int? Owner, string? FleetBand, int? EnemyShips,
-    int? EnemyScouts, int? Collectors, int? Defense = null);
+    int? EnemyScouts, int? Collectors, int? Defense = null, int[]? EnemyComposition = null);
 
 public static class GameCodec
 {
     public static Game Read(string json)
     {
         var game = JsonSerializer.Deserialize<Game>(json) ?? throw new InvalidOperationException("Invalid campaign.");
-        if (game.Schema is not (1 or 2 or 3)) throw new InvalidOperationException("Unsupported save schema.");
+        if (game.Schema is not (1 or 2 or 3 or 4)) throw new InvalidOperationException("Unsupported save schema.");
         if (game.EconomyVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported economy ruleset.");
+        if (game.CombatVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported combat ruleset.");
+        if(game.CombatVersion==1)
+        {
+            if(game.Stars.Any(s=>s.Fleets==null||s.Fleets.Length!=2||s.Fleets.Any(f=>f.Length!=5||f.Any(n=>n<0||n>10000))))throw new InvalidOperationException("Invalid typed fleet save.");
+            if(Enumerable.Range(0,2).Any(t=>Enumerable.Range(0,5).Any(h=>game.Stars.Sum(s=>(long)s.Fleets![t][h])>10000)))throw new InvalidOperationException("Typed fleet capacity exceeded.");
+            foreach(var star in game.Stars)TypedCombat.Sync(star);
+        }
         // Additive migration: existing ships, pending orders, serialized receipt payloads,
         // deadlines and history are retained. No observations are invented retrospectively.
-        game.Schema = 3;
+        game.Schema = 4;
         return game;
     }
 }
@@ -40,7 +47,7 @@ public static class Recon
     public static void Resolve(Game g, DateTimeOffset at)
     {
         // Snapshot avoids team iteration order changing intelligence about scout losses.
-        var snapshot = g.Stars.Select(s => new { s.Owner, s.Collectors, s.Defense, Ships = s.Ships.ToArray(), Scouts = s.Scouts.ToArray() }).ToArray();
+        var snapshot = g.Stars.Select(s => new { s.Owner, s.Collectors, s.Defense, Ships = s.Ships.ToArray(), Scouts = s.Scouts.ToArray(), Fleets=s.Fleets?.Select(f=>f.ToArray()).ToArray() }).ToArray();
         for (var team = 0; team < g.Clans.Count; team++)
         {
             var occurrences = new Dictionary<(int,int,string),int>();
@@ -59,7 +66,8 @@ public static class Recon
                     returned && mission == "deep" ? target.Ships[enemy] : null,
                     returned && mission == "deep" ? target.Scouts[enemy] : null,
                     returned && mission == "deep" ? target.Collectors : null,
-                    returned && mission == "deep" ? target.Defense : null);
+                    returned && mission == "deep" ? target.Defense : null,
+                    returned && mission == "deep" ? target.Fleets?[enemy].ToArray() : null);
                 g.Clans[team].Intelligence.Insert(0,intel);
                 g.Clans[team].Reports.Insert(0,$"Turn {g.Turn}: {mission} scout at {g.Stars[order.Target].Name}: " +
                     (returned ? "returned with a dated intelligence report." : "lost; only limited contact information received."));

@@ -1,4 +1,4 @@
-using Deepfield.CombatLab;
+using Deepfield.Engine.Combat;
 using System.Text.Json;
 
 var hulls=Enum.GetValues<Hull>();var checks=0;
@@ -29,5 +29,5 @@ var huge=CounterBattle.Resolve(new([10000,10000,10000,10000,10000]),new([10000,1
 Check(huge.Winner=="draw","Maximum supported equal fleets must resolve without overflow");
 var rejected=false;try{CounterBattle.Resolve(new([-1,0,0,0,0]),new([0,0,0,0,0]));}catch(ArgumentException){rejected=true;}Check(rejected,"Negative fleets must be rejected");
 Console.WriteLine($"PASS {checks} assertions across 59,049 mirrored composition pairs and all 20 directed equal-budget matchups.");
-Console.WriteLine("Experimental matrix; not used by campaigns, AI, saves or the running playtest.");
+Console.WriteLine("Shared counter model; used only by explicitly opted-in typed preview campaigns.");
 Console.WriteLine(JsonSerializer.Serialize(hulls.Select(h=>new{Hull=h.ToString(),Cost=CounterBattle.Cost(h),Counters=hulls.Where(o=>CounterBattle.Counters(h,o)).Select(o=>o.ToString())}),new JsonSerializerOptions{WriteIndented=true}));

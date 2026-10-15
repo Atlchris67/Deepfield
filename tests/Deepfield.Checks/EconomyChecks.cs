@@ -40,7 +40,7 @@ public static class EconomyChecks
         Check(JsonSerializer.Serialize(Rules.PlanAi(Rules.Observe(visible,0)))==JsonSerializer.Serialize(Rules.PlanAi(Rules.Observe(hidden,0))),"AI defense decisions use filtered intelligence only");
         var old=JsonNode.Parse(JsonSerializer.Serialize(New(0)))!;old["Schema"]=2;old.AsObject().Remove("EconomyVersion");foreach(var star in old["Stars"]!.AsArray())star!.AsObject().Remove("Defense");
         var upgraded=GameCodec.Read(old.ToJsonString());
-        Check(upgraded.Schema==3&&upgraded.EconomyVersion==0&&upgraded.Stars.All(s=>s.Defense==0)&&upgraded.Deadline==New(0).Deadline,"Schema 2 migration keeps legacy rules and initializes zero defenses");
+        Check(upgraded.Schema==4&&upgraded.EconomyVersion==0&&upgraded.Stars.All(s=>s.Defense==0)&&upgraded.Deadline==New(0).Deadline,"Schema 2 migration keeps legacy rules and initializes zero defenses");
         Console.WriteLine($"{count} economy/defense checks passed.");
     }
 }
