@@ -87,3 +87,18 @@ The final typed-fleet stack, including the PostgreSQL pool fix, builds with zero
 The 114 engine checks and 64 API/browser assertions above are successful prior runs, not a claim that this final merged head completed runtime verification. The scout branch containing the PostgreSQL fix separately built and passed its 75 file/rule checks. The final small modal scroll-container adjustment has build/lint validation only. PostgreSQL runtime validation still needs a disposable server independently of the Windows execution block. Re-run the complete checks and browser suite after the host permits the new assembly to load.
 
 Source-only P3 follow-up: battle reports now render null scout and collector counts as Unknown, while observed zero values remain zero. Two browser regression assertions were added for battle unknowns and deep-scout zero counts. These new assertions have not been run; Deepfield execution remains paused under the documented Windows Application Control block. Prior successful counts remain historical.
+
+## Independent fleet-selector verification
+
+The fleet-selector validation module can be checked without the API or .NET runtime:
+
+```powershell
+npm.cmd run test:fleet --prefix web
+Push-Location web
+npm.cmd run test:fleet-ui
+Pop-Location
+```
+
+The pure checks transpile only the standalone TypeScript validation module and exercise inventory, hull allocations, destinations, numeric inputs and order-slot limits. The component checks serve a synthetic React fixture through a temporary loopback Vite server and drive installed Edge. They never start .NET, contact the campaign API, read keys, access saves or touch port 5080. Fixture state exists only in the test page. Both server and browser close afterward.
+
+This increment passed 34 pure validation checks, 12 synthetic browser component checks, frontend lint/build and diff whitespace checks. The component checks cover exact shortage/exhaustion/order-limit messages, repeated clicks, cancel during pending confirmation, Escape, Back, source reset and aggregate reservations. Screenshot: ignored test-results/fleet-validation.png. These results do not replace full API/engine/browser integration checks, which remain paused under the documented Windows execution limitation.

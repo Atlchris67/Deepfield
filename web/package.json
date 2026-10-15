@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "dev": "vite --host 127.0.0.1",
-    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters"
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
+    "test:fleet": "node tests/fleet-selection.mjs",
+    "test:fleet-ui": "node tests/fleet-component.mjs"
   },
   "dependencies": {
     "react": "19.2.0",
