@@ -35,6 +35,5 @@ The normal SDK command above built all four projects successfully with zero warn
 After this build, the emitted API DLL has SHA256 840C27D1858E77A0F8344E89B3A6CA5FF145CB2C22F8CC514547FC9750EA7415, different from the previously blocked build recorded above. This new binary has not been executed or confirmed accepted by Windows. A changed build hash is not evidence that the existing policy issue is resolved; no launch retry was made.
 
 ## Preview storage review correction
-Nine static wiring checks pass via 
-ode tests/preview-storage-source.mjs. Eight C# policy checks and two startup regression cases (
-ode tests/preview-startup.mjs) were authored but remain UNRUN while .NET execution is paused. Startup cases require rejection before any database use and assert an existing sentinel save stays unchanged. This revision has source/static validation only; earlier build evidence above predates this correction.
+
+Nine static wiring checks pass via `node tests/preview-storage-source.mjs`. Eight C# policy checks and two startup regression cases (`node tests/preview-startup.mjs`) were authored but remain UNRUN while .NET execution is paused. Startup cases require rejection before any database use and assert an existing sentinel save stays unchanged. This revision has source/static validation only; earlier build evidence above predates this correction.
