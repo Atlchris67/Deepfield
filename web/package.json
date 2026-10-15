@@ -9,7 +9,8 @@
     "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "test:fleet": "node tests/fleet-selection.mjs",
     "test:fleet-ui": "node tests/fleet-component.mjs",
-    "test:intel-ui": "node tests/intel-component.mjs"
+    "test:intel-ui": "node tests/intel-component.mjs",
+    "test:draft-ui": "node tests/draft-session.mjs"
   },
   "dependencies": {
     "react": "19.2.0",
