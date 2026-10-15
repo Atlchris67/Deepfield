@@ -1,8 +1,5 @@
-export const hulls=[{id:'interceptor',label:'Interceptor',cost:5,counters:'Torpedo boats and bombers'},
- {id:'torpedo',label:'Torpedo boat',cost:10,counters:'Cruisers and disruptors'},
- {id:'cruiser',label:'Cruiser',cost:15,counters:'Interceptors and bombers'},
- {id:'bomber',label:'Bomber',cost:12,counters:'Torpedo boats and disruptors'},
- {id:'disruptor',label:'Disruptor',cost:8,counters:'Interceptors and cruisers'}];
+import { hulls } from './fleetSelection';
+export { hulls } from './fleetSelection';
 export function Composition({counts}:{counts:number[]}){
  return <span>{hulls.map((h,i)=>`${counts[i]} ${h.label.toLowerCase()}`).join(' · ')}</span>;
 }

@@ -37,3 +37,5 @@ After this build, the emitted API DLL has SHA256 840C27D1858E77A0F8344E89B3A6CA5
 ## Preview storage review correction
 
 Nine static wiring checks pass via `node tests/preview-storage-source.mjs`. Eight C# policy checks and two startup regression cases (`node tests/preview-startup.mjs`) were authored but remain UNRUN while .NET execution is paused. Startup cases require rejection before any database use and assert an existing sentinel save stays unchanged. This revision has source/static validation only; earlier build evidence above predates this correction.
+
+Later compile-only follow-up: the unchanged preview guard from PR #7 was compiled on downstream fleet-validation head 73c00a4 with all four projects succeeding, zero warnings/errors (8.27 seconds). Nine static wiring checks also passed. The eight C# policy checks and two process-startup tests remain unrun; no Deepfield executable was launched.

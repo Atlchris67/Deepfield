@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
-import { ExpeditionDialog, available, linked, type Order, type Star } from './ExpeditionDialog';
+import { ExpeditionDialog } from './ExpeditionDialog';
+import { available, linked, type Order, type Star } from './fleetSelection';
 import { FleetPanel, hulls } from './FleetPanel';
 import { IntelligencePanel, type Intel } from './IntelligencePanel';
 
