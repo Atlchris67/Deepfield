@@ -30,7 +30,7 @@ Requires .NET 10 SDK and Node 22.12+ (tested with 22.23.2). From the repository 
 dotnet restore
 npm.cmd ci --prefix web
 npm.cmd run build --prefix web
-dotnet build -m:1
+dotnet build Deepfield.sln -m:1
 
 # Temporary process-local team keys. Retain them in your own session to reconnect.
 $env:Teams__0__Key = [guid]::NewGuid().ToString('N')
@@ -68,7 +68,7 @@ Topology and coordinates are public; unknown star names and current intelligence
 ## Verify
 
 ```powershell
-dotnet build -m:1
+dotnet build Deepfield.sln -m:1
 dotnet run --project tests/Deepfield.Checks --no-build
 npm.cmd run lint --prefix web
 npm.cmd run build --prefix web
@@ -97,3 +97,5 @@ The repository now has an agreed documentation baseline on main. Development is 
 
 ## Typed fleet preview
 See [typed fleet rules and local preview](docs/TYPED_FLEETS.md) for opt-in hulls, the expedition selector, settlement timing and a separate port/save path. Existing campaigns retain generic ship rules.
+
+For traditional solution files and IDE setup, see [Visual Studio build instructions](docs/VISUAL_STUDIO.md). Compilation and Windows execution permission are separate; the known runtime block remains unresolved.
