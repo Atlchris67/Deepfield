@@ -8,7 +8,7 @@
       "applicationUrl": "http://127.0.0.1:5098",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SavePath": "data/visual-studio-campaign.json",
+        "IsolatedPreview": "true",
         "LocalTest": "false"
       }
     }
