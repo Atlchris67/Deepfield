@@ -1,8 +1,5 @@
-using System.Numerics;
-
 namespace Deepfield.CombatLab;
 
-// Experimental, standalone simulator. The API/engine do not reference this project.
 public enum Hull { Interceptor, TorpedoBoat, Cruiser, Bomber, Disruptor }
 public record Fleet(int[] Counts)
 {
@@ -27,38 +24,65 @@ public static class CounterBattle
     };
     static void Validate(Fleet fleet)
     {
-        if(fleet.Counts.Length!=5||fleet.Counts.Any(n=>n<0||n>10000))throw new ArgumentException("Five hull counts, each 0–10000, required.");
+        if(fleet.Counts.Length!=5||fleet.Counts.Any(n=>n<0||n>10006))throw new ArgumentException("Five hull counts, each 0–10006, required.");
     }
-    static BigInteger AttackNumerator(Fleet own,Fleet enemy)
+    sealed class Edge(int to,int reverse,int capacity,int cost)
     {
-        BigInteger numerator=0;
-        for(var i=0;i<5;i++)for(var j=0;j<5;j++)
+        public int To=to,Reverse=reverse,Capacity=capacity,Cost=cost;
+    }
+    // Exact maximum-value simultaneous salvo. Each ship has one attack; it can
+    // destroy one same-class hull or a hull it counters. Integer network flow
+    // optimizes target allocation without changing attack power as targets change.
+    static int[] Damage(Fleet attacker,Fleet target)
+    {
+        const int source=10,sink=11,nodes=12;
+        var graph=Enumerable.Range(0,nodes).Select(_=>new List<Edge>()).ToArray();
+        Edge Add(int from,int to,int capacity,int cost)
         {
-            var factor=i==j?2:Counters((Hull)i,(Hull)j)?3:1;
-            numerator+=(BigInteger)own.Counts[i]*Cost((Hull)i)*enemy.Counts[j]*Cost((Hull)j)*factor;
+            var edge=new Edge(to,graph[to].Count,capacity,cost);
+            graph[from].Add(edge);graph[to].Add(new(from,graph[from].Count-1,0,-cost));return edge;
         }
-        return numerator;
+        var targetEdges=new Edge[5];
+        for(var h=0;h<5;h++)
+        {
+            Add(source,h,attacker.Counts[h],0);
+            targetEdges[h]=Add(h+5,sink,target.Counts[h],-Cost((Hull)h));
+            for(var t=0;t<5;t++)if(h==t||Counters((Hull)h,(Hull)t))Add(h,t+5,50030,0);
+        }
+        while(true)
+        {
+            var distance=Enumerable.Repeat(int.MaxValue/4,nodes).ToArray();distance[source]=0;
+            var previousNode=new int[nodes];var previousEdge=new int[nodes];
+            for(var pass=0;pass<nodes-1;pass++)
+            {
+                var changed=false;
+                for(var node=0;node<nodes;node++)for(var index=0;index<graph[node].Count;index++)
+                {
+                    var edge=graph[node][index];
+                    if(edge.Capacity>0&&distance[node]<int.MaxValue/4&&distance[edge.To]>distance[node]+edge.Cost)
+                    {distance[edge.To]=distance[node]+edge.Cost;previousNode[edge.To]=node;previousEdge[edge.To]=index;changed=true;}
+                }
+                if(!changed)break;
+            }
+            if(distance[sink]>=0)break;
+            var amount=int.MaxValue;
+            for(var node=sink;node!=source;node=previousNode[node])amount=Math.Min(amount,graph[previousNode[node]][previousEdge[node]].Capacity);
+            for(var node=sink;node!=source;node=previousNode[node])
+            {var edge=graph[previousNode[node]][previousEdge[node]];edge.Capacity-=amount;graph[node][edge.Reverse].Capacity+=amount;}
+        }
+        return Enumerable.Range(0,5).Select(h=>target.Counts[h]-targetEdges[h].Capacity).ToArray();
     }
     public static Outcome Resolve(Fleet left,Fleet right)
     {
         Validate(left);Validate(right);
-        var l=new Fleet(left.Counts.ToArray());var r=new Fleet(right.Counts.ToArray());
-        if(l.Value==0||r.Value==0)return new(l,r);
-        // Cross multiplication keeps comparison exact, symmetric and free of RNG.
-        var leftScore=AttackNumerator(l,r)*l.Value;
-        var rightScore=AttackNumerator(r,l)*r.Value;
-        if(leftScore==rightScore)return new(new(new int[5]),new(new int[5]));
-        var winner=leftScore>rightScore?l:r;var loser=leftScore>rightScore?r:l;
-        var winningScore=BigInteger.Max(leftScore,rightScore);var losingScore=BigInteger.Min(leftScore,rightScore);
-        var damage=(int)(((BigInteger)winner.Value*losingScore+winningScore-1)/winningScore);
-        // Provisional screening rule: lowest-cost hulls absorb damage first.
-        // Whole-hull rounding is explicit; no hidden fractional survivors.
-        foreach(var hull in Enum.GetValues<Hull>().OrderBy(Cost))
-        {
-            var lost=Math.Min(winner.Counts[(int)hull],(damage+Cost(hull)-1)/Cost(hull));
-            winner.Counts[(int)hull]-=lost;damage=Math.Max(0,damage-lost*Cost(hull));
-        }
-        Array.Clear(loser.Counts);
+        var inflictedLeft=Damage(left,right);var inflictedRight=Damage(right,left);
+        var l=new Fleet(left.Counts.Zip(inflictedRight,(count,lost)=>count-lost).ToArray());
+        var r=new Fleet(right.Counts.Zip(inflictedLeft,(count,lost)=>count-lost).ToArray());
+        // Decisive-rout abstraction: the side with less surviving credit value
+        // loses its remaining ships; equal surviving values mutually destroy.
+        var leftValue=l.Value;var rightValue=r.Value;
+        if(leftValue<=rightValue)Array.Clear(l.Counts);
+        if(rightValue<=leftValue)Array.Clear(r.Counts);
         return new(l,r);
     }
 }
