@@ -70,5 +70,13 @@ try{
   check(false,'Pending login accepted another key: displayed '+await page.locator('.live').innerText()+', order authenticated as team '+putTeams.at(-1));
  }
  check(await page.getByLabel('Clan access key').isDisabled(),'Login credential locks until its response resolves');readMode='normal';await flush();await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ // Recovery must release both UI locks and the synchronous action guard.
+ readMode='fail';await page.getByRole('button',{name:'Refresh clan orders',exact:true}).click();await page.getByRole('alert').filter({hasText:'refresh failure'}).waitFor();
+ check(await page.getByRole('button',{name:'Refresh clan orders',exact:true}).isEnabled(),'Failed standalone refresh releases action guard');
+ await page.getByRole('button',{name:'Refresh clan orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Latest clan orders loaded'}).waitFor();
+ check(await commit().isEnabled(),'Successful refresh retry leaves Commit enabled');
+ await page.getByRole('button',{name:'Leave',exact:true}).click();readMode='fail';await page.getByLabel('Clan access key').fill('aurora');await page.getByRole('button',{name:'Enter command deck'}).click();await page.getByRole('alert').filter({hasText:'refresh failure'}).waitFor();
+ check(await page.getByLabel('Clan access key').isEnabled()&&await page.getByRole('button',{name:'Enter command deck'}).isEnabled(),'Failed login unlocks credentials and action guard');
+ await login('ember');check((await page.locator('.live').innerText()).includes('Ember fixture'),'Login failure permits another clan login without stale credentials');
  console.log(`${checks} synthetic draft/session checks passed; no .NET or live API involved.`);
 }finally{if(browser)await browser.close();await server.close();}
