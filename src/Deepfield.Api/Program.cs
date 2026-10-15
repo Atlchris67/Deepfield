@@ -10,7 +10,7 @@ var keys = new[]{builder.Configuration["Teams:0:Key"],builder.Configuration["Tea
 if(keys.Any(k=>string.IsNullOrWhiteSpace(k) || k.Length<24) || keys[0]==keys[1])
     throw new InvalidOperationException("Set distinct Teams__0__Key and Teams__1__Key environment values (at least 24 characters).");
 var localTest=builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("LocalTest");
-Game NewGame()=>Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true));
+Game NewGame()=>Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0));
 IGameStore store;
 var connection=builder.Configuration.GetConnectionString("Deepfield");
 if(!string.IsNullOrEmpty(connection))
