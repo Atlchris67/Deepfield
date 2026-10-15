@@ -74,3 +74,16 @@ The authorized destination is `https://github.com/Atlchris67/Deepfield`, initial
 Private reconnaissance entropy: scout branch 75 engine/store checks and 32 API/browser assertions; economy stack 89 checks and 35 API/browser assertions. Both built without warnings and passed frontend build/lint. PostgreSQL runtime remains untested.
 Counter correction: 474,448 assertions passed, including 295,245 one-hull reinforcement comparisons, four scales of the reported regression, and 2,000 larger mixed fleets. The model now uses simultaneous maximum-value salvos and decisive rout; campaign balance is not established.
 
+
+## Typed fleet UI checkpoint
+Engine/store suite: 114 passing checks (43 baseline, 32 reconnaissance, 14 economy, 25 typed fleet). Counter simulator: 474,448 assertions, including outcome-rank monotonicity in 295,245 reinforcement comparisons. Frontend build and lint pass. Isolated API/Edge suite: 64 passing assertions on port 5097, covering exact 8/10 and 3+6 rejection, same-turn builds, cancellation/back/Escape/in-flight cancellation, repeated clicks, stale inventory/revision, source changes, per-class inventory, clan cleanup, collectors, mixed combat, private reports and restart.
+Desktop and mobile modal screenshots inspected. Screenshots: test-results/expedition-modal-desktop.png, expedition-modal-mobile.png, typed-fleet-desktop.png and typed-fleet-mobile.png. These ignored artifacts contain isolated test campaigns only. PostgreSQL integration remains skipped; live port 5080 untouched.
+
+The final stack also includes the PostgreSQL single-connection migration fix and optional MaxPoolSize=1 regression fixture; see POSTGRES_MIGRATION.md. This path compiles but remains runtime-unverified without PostgreSQL.
+
+### Final merged-head limitation
+The final typed-fleet stack, including the PostgreSQL pool fix, builds with zero warnings/errors and passes frontend build/lint. Windows Application Control then blocked loading the newly built Deepfield.Api.dll (0x800711C7), both in the executable checks and isolated API startup. One unchanged retry was also blocked. Security policy was not modified.
+
+The 114 engine checks and 64 API/browser assertions above are successful prior runs, not a claim that this final merged head completed runtime verification. The scout branch containing the PostgreSQL fix separately built and passed its 75 file/rule checks. The final small modal scroll-container adjustment has build/lint validation only. PostgreSQL runtime validation still needs a disposable server independently of the Windows execution block. Re-run the complete checks and browser suite after the host permits the new assembly to load.
+
+Source-only P3 follow-up: battle reports now render null scout and collector counts as Unknown, while observed zero values remain zero. Two browser regression assertions were added for battle unknowns and deep-scout zero counts. These new assertions have not been run; Deepfield execution remains paused under the documented Windows Application Control block. Prior successful counts remain historical.

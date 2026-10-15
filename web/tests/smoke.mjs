@@ -23,6 +23,13 @@ async function start(extra={}){
 async function stop(){if(processHandle&&processHandle.exitCode===null){const done=new Promise(r=>processHandle.once('exit',r));processHandle.kill();await done;}}
 async function api(path,{team=0,method='GET',body,headers={}}={}){return fetch(base+'/api/'+path,{method,headers:{Authorization:'Bearer '+keys[team],...body?{'Content-Type':'application/json'}:{},...headers},body:body?JSON.stringify(body):undefined});}
 async function state(team=0){const res=await api('campaign',{team});assert.equal(res.status,200);return (await res.json()).campaign;}
+async function expedition(page,counts,target='1'){
+ await page.getByRole('button',{name:'Select expedition fleet',exact:true}).click();
+ await page.getByLabel('Expedition destination').selectOption(target);
+ for(const [name,count] of Object.entries(counts))await page.getByLabel('Send '+name,{exact:true}).fill(String(count));
+ await page.getByRole('button',{name:'Add expedition to draft',exact:true}).click();
+ await page.getByRole('dialog').waitFor({state:'detached'});
+}
 try{
  await start();
  check((await fetch(base+'/api/campaign')).status===401,'Unauthenticated campaign denied');
@@ -32,6 +39,10 @@ try{
  check(publicHostStatus===404,'Public hostname acceleration denied');
  const initial=await state();
  check(!JSON.stringify(initial).toLowerCase().includes('reconentropy'),'Campaign API omits private reconnaissance entropy');
+ for(const [name,orders] of [['ten',[{kind:'move',source:0,target:1,ships:10}]],['split',[{kind:'move',source:0,target:1,ships:3},{kind:'move',source:0,target:6,ships:6}]],['new-build',[{kind:'build',source:0,ships:2},{kind:'move',source:0,target:1,ships:10}]]]){
+  const before=await state();const response=await api('orders',{method:'PUT',body:{turn:before.turn,revision:before.revision,requestId:'invalid-'+name,orders}});
+  check(response.status===409&&JSON.stringify(await state())===JSON.stringify(before),'Server atomically rejects 8 ships overspent by '+name+' without partial plan, fleet or treasury mutation');
+ }
  const order={turn:initial.turn,revision:initial.revision,requestId:'http-retry',orders:[{kind:'move',source:0,target:1,ships:4}]};
  check((await api('orders',{method:'PUT',body:order})).status===200,'HTTP order accepted');
  check((await api('orders',{method:'PUT',body:order})).status===200&&(await state()).revision===1,'HTTP retry idempotent');
@@ -70,11 +81,11 @@ try{
  check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Mobile layout has no horizontal overflow');
  check(errors.length===0,'Browser has no uncaught application errors');
  const submissions=[];page.on('request',request=>{if(request.url().endsWith('/api/orders')&&request.method()==='PUT')submissions.push(request.postDataJSON());});
- await page.getByLabel('Action at Hearth').selectOption('move');await page.getByLabel('Destination').selectOption('1');
- await page.getByLabel('Ships',{exact:true}).fill('100');await page.getByRole('button',{name:'+ Add to draft'}).click();
+ await page.getByLabel('Action at Hearth').selectOption('move');await expedition(page,{Ships:2});
+ await page.route('**/api/orders',route=>route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({error:'Not enough existing ships. Fixture simulates a definitive rejection.'})}),{times:1});
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('alert').filter({hasText:'Not enough existing ships'}).waitFor();
- check(await page.getByRole('button',{name:'Remove order 1',exact:true}).isEnabled()&&await page.getByRole('button',{name:'+ Add to draft'}).isEnabled()&&await page.locator('.queue li').count()===1,'Definitive 409 preserves draft and unlocks editing');
- await page.getByRole('button',{name:'Remove order 1',exact:true}).click();await page.getByLabel('Ships',{exact:true}).fill('2');await page.getByRole('button',{name:'+ Add to draft'}).click();
+ check(await page.getByRole('button',{name:'Remove order 1',exact:true}).isEnabled()&&await page.getByRole('button',{name:'Select expedition fleet',exact:true}).isEnabled()&&await page.locator('.queue li').count()===1,'Definitive 409 preserves draft and unlocks editing');
+ await page.getByRole('button',{name:'Remove order 1',exact:true}).click();await expedition(page,{Ships:2});
  // Let the server commit, then lose its response: retry must reuse the exact ID/payload.
  await page.route('**/api/orders',async route=>{await route.fetch();await route.abort('failed');},{times:1});
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('alert').waitFor();
@@ -109,7 +120,7 @@ try{
  check(await page.getByLabel('Message',{exact:true}).inputValue()===''&&await page.getByLabel('Call sign').inputValue()==='Commander','Switching clans clears private unsent message and author');
  check(await page.getByRole('status').innerText()===''&&await page.locator('.queue li').count()===0&&await page.getByRole('alert').count()===0,'Switching clans clears orders, notices and errors');
  check(await page.locator('.intelReport').count()===0,'Switching clans clears previous clan reconnaissance reports');
- check(await page.getByLabel('Ships',{exact:true}).inputValue()==='2'&&await page.getByLabel('Destination').inputValue()==='-1','Switching clans resets order editor state');
+ check(await page.getByRole('button',{name:'Select expedition fleet',exact:true}).count()===1&&await page.getByRole('dialog').count()===0,'Switching clans resets order editor state');
  await browser.close();browser=null;
  await stop(); await start({LocalTest:'false'});
  check((await api('local/advance',{method:'POST',body:{turn:4}})).status===404,'Acceleration disabled without explicit opt-in');
@@ -129,5 +140,85 @@ try{
  const economicState=await state();check(economicState.stars[0].defense===2&&economicState.credits===42&&economicState.nextIncome===20,'Browser builds fixed defenses and collector with correct income/cost');
  check((await state(1)).stars[0].defense===null,'Enemy fixed defenses remain hidden through API');
  await economyPage.screenshot({path:resolve(artifacts,'economy-defense-desktop.png'),fullPage:true});
+ await browser.close();browser=null;await stop();save=resolve(artifacts,`typed-${Date.now()}.json`);await start({EconomyVersion:'1',CombatVersion:'1'});
+ check((await state()).combatVersion===1&&(await state()).stars[0].fleets[0][0]===8,'Typed preview starts with explicit interceptor inventory');
+ await stop();const typedFixture=JSON.parse(await readFile(save,'utf8'));typedFixture.Stars[1].Owner=1;typedFixture.Stars[1].Fleets[1]=[0,0,0,4,0];typedFixture.Stars[1].Ships[1]=4;typedFixture.ReconRates={Distant:100,Close:100,Deep:100};await writeFile(save,JSON.stringify(typedFixture));await start({EconomyVersion:'1',CombatVersion:'1'});
+ browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL??'msedge',headless:true});
+ const fleetPage=await browser.newPage({viewport:{width:1440,height:1100}});const fleetErrors=[];fleetPage.on('pageerror',error=>fleetErrors.push(error.message));await fleetPage.goto(base);
+ await fleetPage.getByLabel('Clan access key').fill(keys[0]);await fleetPage.getByRole('button',{name:'Enter command deck'}).click();await fleetPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();
+ await fleetPage.getByLabel('Expedition destination').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('10');
+ check(await fleetPage.getByTestId('available-interceptor').innerText()==='8'&&await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).isDisabled(),'Modal blocks 10 requested from 8 existing ships before drafting');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ check(await fleetPage.locator('.queue li').count()===0,'Cancel leaves no expedition orders');
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.keyboard.press('Escape');await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ check(await fleetPage.locator('.queue li').count()===0,'Escape discards selection');
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.goBack();await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ check(await fleetPage.getByRole('heading',{name:'The stars are within reach.'}).isVisible(),'Browser Back closes modal without leaving command deck');
+ await expedition(fleetPage,{Interceptor:3});await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('6');
+ check(await fleetPage.getByTestId('available-interceptor').innerText()==='5'&&await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).isDisabled(),'Drafted 3 reserves inventory and blocks a second 6 from 8');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});await fleetPage.getByRole('button',{name:'Remove order 1',exact:true}).click();
+ await fleetPage.getByLabel('Action at Hearth').selectOption('build');await fleetPage.getByLabel('Ships',{exact:true}).fill('2');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();await fleetPage.getByLabel('Action at Hearth').selectOption('move');
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('10');
+ check(await fleetPage.getByTestId('available-interceptor').innerText()==='8'&&await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).isDisabled(),'Same-turn construction never increases dispatch availability');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});await fleetPage.getByRole('button',{name:'Remove order 1',exact:true}).click();
+ // Return a changed inventory on the confirmation read: revalidation must prevent drafting.
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Expedition destination').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('8');
+ await fleetPage.route('**/api/campaign',async route=>{const response=await route.fetch();const body=await response.json();body.campaign.stars[0].fleets[0][0]=2;body.campaign.stars[0].ships[0]=2;await route.fulfill({response,json:body});},{times:1});
+ await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).click();await fleetPage.getByRole('alert').filter({hasText:'Fleet availability changed'}).waitFor();
+ check(await fleetPage.locator('.queue li').count()===0&&await fleetPage.getByTestId('available-interceptor').innerText()==='2','Stale inventory is refreshed and rejects overreservation');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});await fleetPage.getByRole('button',{name:'Refresh clan orders',exact:true}).click();await fleetPage.getByRole('status').filter({hasText:'Latest clan orders loaded'}).waitFor();
+ // Revalidate teammate revision rather than replacing a plan from an old view.
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Expedition destination').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('1');
+ await fleetPage.route('**/api/campaign',async route=>{const response=await route.fetch();const body=await response.json();body.campaign.revision++;await route.fulfill({response,json:body});},{times:1});
+ await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).click();await fleetPage.getByRole('alert').filter({hasText:'Clan orders or turn changed'}).waitFor();check(await fleetPage.locator('.queue li').count()===0,'Stale teammate revision cannot append expedition to an obsolete draft');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ // Cancel an in-flight availability read; its later response must not append orders.
+ let release;const gate=new Promise(resolve=>release=resolve);let received;const reading=new Promise(resolve=>received=resolve);
+ await fleetPage.route('**/api/campaign',async route=>{const response=await route.fetch();received();await gate;await route.fulfill({response});},{times:1});
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Expedition destination').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('1');await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).click();await reading;
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});const delivered=fleetPage.waitForResponse('**/api/campaign');release();await delivered;
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();check(await fleetPage.locator('.queue li').count()===0,'Cancel during availability read cannot create a delayed order');await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ // Programmatic repeated clicks exercise the synchronous submission latch.
+ await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Expedition destination').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('1');
+ await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).evaluate(button=>{button.click();button.click();});await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ check(await fleetPage.locator('.queue li').count()===1,'Repeated Add clicks create one expedition');await fleetPage.getByRole('button',{name:'Remove order 1',exact:true}).click();
+ await fleetPage.getByLabel('Action at Hearth').selectOption('build');await fleetPage.getByLabel('Hull class').selectOption('cruiser');await fleetPage.getByLabel('Ships',{exact:true}).fill('2');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();
+ await fleetPage.getByLabel('Action at Hearth').selectOption('scoutbuild');await fleetPage.getByLabel('Ships',{exact:true}).fill('1');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();
+ await fleetPage.getByRole('button',{name:'Commit orders',exact:true}).click();await fleetPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();await fleetPage.getByRole('button',{name:'Resolve one test turn'}).click();await fleetPage.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ check((await state()).stars[0].fleets[0][2]===2&&(await state()).credits===45,'Hull editor builds cruisers at correct cost alongside scout');
+ await fleetPage.getByLabel('Action at Hearth').selectOption('move');await expedition(fleetPage,{Interceptor:4,Cruiser:2});
+ await fleetPage.getByLabel('Action at Hearth').selectOption('recon');await fleetPage.getByLabel('Destination').selectOption('1');await fleetPage.getByLabel('Recon mission').selectOption('deep');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();
+ await fleetPage.route('**/api/orders',async route=>{await route.fetch();await route.abort('failed');},{times:1});await fleetPage.getByRole('button',{name:'Commit orders',exact:true}).click();await fleetPage.getByRole('alert').waitFor();await fleetPage.getByRole('button',{name:'Retry submission',exact:true}).click();await fleetPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
+ check((await state()).orders.length===3&&(await state()).orders[1].hull==='cruiser','Interrupted mixed-fleet order retains selected hulls and one scout mission');
+ await fleetPage.getByRole('button',{name:'Resolve one test turn'}).click();await fleetPage.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ const result=await state();check(result.stars[1].owner===0&&result.stars[1].fleets[0][2]===2&&result.stars[1].fleets[1].every(n=>n===0),'Mixed fleet counters bombers and establishes colony with interceptor escorts');
+ check(result.intelligence.find(i=>i.mission==='deep').enemyComposition[3]===4&&result.intelligence.find(i=>i.mission==='battle').enemyComposition[3]===4,'Deep and surviving battle reports retain actual opening composition');
+ check((await state(1)).intelligence.find(i=>i.mission==='battle').enemyComposition===null,'Destroyed rival fleet receives no exact survivor/composition report');
+ const battleText=await fleetPage.locator('.intelReport').filter({has:fleetPage.getByRole('heading',{name:/battle$/})}).innerText();
+ check(battleText.includes('4 enemy combat ships')&&battleText.includes('Unknown enemy scouts')&&battleText.includes('Unknown collectors'),'Battle intelligence renders unobserved scout and collector counts explicitly Unknown');
+ const deepText=await fleetPage.locator('.intelReport').filter({has:fleetPage.getByRole('heading',{name:/deep$/})}).innerText();
+ check(deepText.includes('0 enemy scouts')&&deepText.includes('0 collectors')&&!deepText.includes('Unknown'),'Deep intelligence preserves observed zero counts rather than labeling them Unknown');
+ await fleetPage.getByRole('button',{name:'Lumen, observed',exact:true}).click();await fleetPage.screenshot({path:resolve(artifacts,'typed-fleet-desktop.png'),fullPage:true});await fleetPage.setViewportSize({width:390,height:844});await fleetPage.screenshot({path:resolve(artifacts,'typed-fleet-mobile.png'),fullPage:true});
+ check(await fleetPage.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)&&fleetErrors.length===0,'Typed fleet editor/report UI has no mobile overflow or uncaught errors');
+ check(await fleetPage.getByLabel('Selected system collectors').innerText().then(t=>t.includes('0')),'New colony prominently shows zero collectors');
+ check(await fleetPage.locator('.settlementHelp').innerText().then(t=>t.includes('turn after settlement')),'Colony help explains habitat consumption and first legal collector turn');
+ await fleetPage.getByLabel('Action at Lumen').selectOption('collector');check(await fleetPage.getByRole('button',{name:'+ Add to draft'}).isEnabled(),'Collector construction becomes available at settled colony in following turn');
+ await fleetPage.getByLabel('Action at Lumen').selectOption('move');await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.getByLabel('Send Cruiser',{exact:true}).fill('3');
+ check(await fleetPage.getByTestId('available-cruiser').innerText()==='2'&&await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).isDisabled(),'Per-hull inventory cannot be replaced by other ship types');
+ await fleetPage.getByLabel('Send Cruiser',{exact:true}).fill('1');await fleetPage.getByLabel('Expedition source').selectOption('0');
+ check(await fleetPage.getByLabel('Send Cruiser',{exact:true}).inputValue()==='0'&&await fleetPage.getByTestId('available-interceptor').innerText()==='4','Changing source resets all selections and recalculates source inventory');
+ await fleetPage.getByLabel('Expedition source').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('1');await fleetPage.screenshot({path:resolve(artifacts,'expedition-modal-mobile.png')});
+ check(await fleetPage.getByRole('dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),'Mobile fleet modal has no horizontal overflow');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ await fleetPage.setViewportSize({width:1440,height:1100});await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.screenshot({path:resolve(artifacts,'expedition-modal-desktop.png')});
+ // Force session unmount while open, proving no old selection survives a clan switch.
+ await fleetPage.getByRole('button',{name:'Leave',exact:true}).evaluate(button=>button.click());await fleetPage.getByLabel('Clan access key').fill(keys[1]);await fleetPage.getByRole('button',{name:'Enter command deck'}).click();await fleetPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ check(await fleetPage.getByRole('dialog').count()===0&&await fleetPage.locator('.queue li').count()===0,'Clan switch unmounts modal and clears all private selection/draft state');
+ await fleetPage.getByRole('button',{name:'Dawn, observed',exact:true}).click();await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();
+ check(await fleetPage.getByLabel('Send Interceptor',{exact:true}).inputValue()==='0'&&await fleetPage.getByTestId('available-interceptor').innerText()==='8','New clan sees only its own inventory and a fresh zeroed selection');
+ await fleetPage.getByRole('button',{name:'Cancel',exact:true}).click();await fleetPage.getByRole('dialog').waitFor({state:'detached'});
+ await browser.close();browser=null;await stop();await start({EconomyVersion:'1',CombatVersion:'1'});
+ check((await state()).turn===3&&(await state()).stars[1].fleets[0][2]===2&&(await state()).intelligence.length===2,'Process restart preserves typed fleet, reports and exactly one resolved turn');
  console.log(`${count} API/browser checks passed; screenshots in ${artifacts}`);
 }finally{if(browser)await browser.close();await stop();}

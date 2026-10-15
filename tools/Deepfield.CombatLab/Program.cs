@@ -1,4 +1,4 @@
-using Deepfield.CombatLab;
+using Deepfield.Engine.Combat;
 using System.Text.Json;
 
 var hulls=Enum.GetValues<Hull>();var checks=0;
@@ -28,6 +28,7 @@ foreach(var left in fleets)foreach(var right in fleets)
 var huge=CounterBattle.Resolve(new([10000,10000,10000,10000,10000]),new([10000,10000,10000,10000,10000]));
 Check(huge.Winner=="draw","Maximum supported equal fleets must resolve without overflow");
 var rejected=false;try{CounterBattle.Resolve(new([-1,0,0,0,0]),new([0,0,0,0,0]));}catch(ArgumentException){rejected=true;}Check(rejected,"Negative fleets must be rejected");
+int Rank(Outcome outcome)=>outcome.Winner=="left"?2:outcome.Winner=="draw"?1:0;
 var reinforcementCases=0;
 foreach(var left in fleets)foreach(var right in fleets)
 {
@@ -36,7 +37,7 @@ foreach(var left in fleets)foreach(var right in fleets)
     {
         var reinforced=left.Counts.ToArray();reinforced[hull]++;
         var result=CounterBattle.Resolve(new(reinforced),right);
-        Check(result.Left.Value>=baseline.Left.Value,"Adding any hull cannot reduce own surviving value or turn victory into defeat");reinforcementCases++;
+        Check(result.Left.Value>=baseline.Left.Value&&Rank(result)>=Rank(baseline),"Adding any hull cannot reduce own surviving value or turn victory into defeat");reinforcementCases++;
     }
 }
 foreach(var scale in new[]{1,10,100,1000})
@@ -55,5 +56,5 @@ for(var sample=0;sample<2000;sample++)
     Check(CounterBattle.Resolve(new(larger),right).Left.Value>=CounterBattle.Resolve(left,right).Left.Value,"Larger mixed fleets preserve reinforcement monotonicity");
 }
 Console.WriteLine($"PASS {checks} assertions: 59,049 mirrored pairs, {reinforcementCases} one-hull reinforcement cases, 4 scaled reviewer fixtures, 2,000 larger mixed cases, and all 20 directed equal-budget matchups.");
-Console.WriteLine("Experimental matrix; not used by campaigns, AI, saves or the running playtest.");
+Console.WriteLine("Shared counter model; used only by explicitly opted-in typed preview campaigns.");
 Console.WriteLine(JsonSerializer.Serialize(hulls.Select(h=>new{Hull=h.ToString(),Cost=CounterBattle.Cost(h),Counters=hulls.Where(o=>CounterBattle.Counters(h,o)).Select(o=>o.ToString())}),new JsonSerializerOptions{WriteIndented=true}));
