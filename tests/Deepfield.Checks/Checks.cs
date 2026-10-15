@@ -8,13 +8,13 @@ public static class Checks
     static int count;
     static void Assert(bool ok,string message) { if(!ok) throw new Exception(message); count++; Console.WriteLine("PASS "+message); }
     static void Reject(Action action,string message) { try{action();}catch(RuleException){Assert(true,message);return;}throw new Exception("Expected rejection: "+message); }
-    static Game New()=>Rules.Create(42,Now,false);
+    static Game New()=>Rules.Create(42,Now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     static Submission Request(Game g,int team,List<Order> orders,string? id=null)=>new(g.Turn,g.Clans[team].Revision,id??Guid.NewGuid().ToString(),orders);
     public static async Task Run()
     {
         var g=New();
         Assert(JsonSerializer.Serialize(g)==JsonSerializer.Serialize(New()),"Seed and time reproduce initial state");
-        Assert(JsonSerializer.Serialize(g)!=JsonSerializer.Serialize(Rules.Create(43,Now,false)),"Different seeds change layout");
+        Assert(JsonSerializer.Serialize(g)!=JsonSerializer.Serialize(Rules.Create(43,Now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")),"Different seeds change layout");
         var view=Rules.Observe(g,0);
         Assert(view.Stars[11].Owner==null&&view.Stars[11].Ships==null&&!view.Stars[11].Known,"Enemy homeworld secrets withheld");
         Assert(view.Stars[1].Known&&!view.Stars[1].Visible&&view.Stars[1].Collectors==null,"Charted frontier has no current intelligence");
@@ -50,10 +50,10 @@ public static class Checks
         Assert(g.Winner==0&&!Rules.Resolve(g,g.Deadline),"Reachable Type III victory freezes turn advancement");
         g=New(); for(var i=0;i<8;i++){g.Stars[i].Owner=i/4;g.Stars[i].Collectors=2;} Rules.Resolve(g,g.Deadline);
         Assert(g.Winner==2,"Simultaneous Type III victory is shared");
-        g=Rules.Create(99,Now,true);
+        g=Rules.Create(99,Now,true, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         for(var turn=0;turn<60&&g.Winner==null;turn++){Rules.Validate(Rules.Observe(g,1),Rules.PlanAi(Rules.Observe(g,1)));Rules.Resolve(g,g.Deadline);}
         Assert(g.Winner==1,"AI can reach victory using legal visible orders");
-        g=Rules.Create(99,Now,true);g.Stars[11].Ships[1]=102;
+        g=Rules.Create(99,Now,true, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");g.Stars[11].Ships[1]=102;
         var largeFleetPlan=Rules.PlanAi(Rules.Observe(g,1));Rules.Validate(Rules.Observe(g,1),largeFleetPlan);
         Assert(largeFleetPlan.Any(o=>o.Kind=="move"&&o.Ships==100),"102-ship AI fleet produces a legal capped expedition");
         for(var turn=0;turn<3;turn++)
@@ -67,7 +67,7 @@ public static class Checks
         var path=Path.Combine(directory,"campaign.json"); IGameStore store=new FileGameStore(path,New);
         await StoreChecks(store,()=>new FileGameStore(path,()=>throw new Exception("Should load existing save")));
         var aiPath=Path.Combine(directory,"large-ai.json");
-        Game LargeAi(){var campaign=Rules.Create(99,Now,true);campaign.Stars[11].Ships[1]=102;return campaign;}
+        Game LargeAi(){var campaign=Rules.Create(99,Now,true, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");campaign.Stars[11].Ships[1]=102;return campaign;}
         for(var turn=0;turn<3;turn++)
         {
             var due=Now.AddDays(turn+1);

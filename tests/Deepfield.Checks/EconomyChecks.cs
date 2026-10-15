@@ -8,7 +8,7 @@ public static class EconomyChecks
     {
         var now=DateTimeOffset.Parse("2026-10-15T12:00:00Z");var count=0;
         void Check(bool ok,string label){if(!ok)throw new Exception(label);count++;Console.WriteLine("PASS "+label);}
-        Game New(int version=1)=>Rules.Create(42,now,false,version);
+        Game New(int version=1)=>Rules.Create(42,now,false,version, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         var legacy=New(0);legacy.Stars[0].Collectors=100;Rules.Resolve(legacy,legacy.Deadline);
         Check(legacy.Clans[0].Credits==75,"Legacy collector income remains unchanged");
         var g=New();Check(Rules.Observe(g,0).NextIncome==18,"Economy preview projects base income plus first collector");

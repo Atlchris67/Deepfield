@@ -7,6 +7,13 @@ namespace Deepfield.Api;
 public interface IGameStore { Task<T> Execute<T>(Func<Game,T> operation, bool write = true); }
 public sealed class FileGameStore(string path, Func<Game> create) : IGameStore
 {
+    static async Task Save(string full,Game game)
+    {
+        var temp=full+".tmp";
+        await using(var stream=new FileStream(temp,FileMode.Create,FileAccess.Write,FileShare.None,4096,FileOptions.WriteThrough))
+        {await JsonSerializer.SerializeAsync(stream,game);stream.Flush(true);}
+        if(File.Exists(full))File.Replace(temp,full,null);else File.Move(temp,full);
+    }
     public async Task<T> Execute<T>(Func<Game,T> operation, bool write = true)
     {
         var full = Path.GetFullPath(path); Directory.CreateDirectory(Path.GetDirectoryName(full)!);
@@ -19,15 +26,15 @@ public sealed class FileGameStore(string path, Func<Game> create) : IGameStore
         using(lease)
         {
             var exists = File.Exists(full);
-            var game = exists ? GameCodec.Read(await File.ReadAllTextAsync(full)) : create();
-            
+            var json=exists?await File.ReadAllTextAsync(full):null;
+            var migrateEntropy=json!=null&&GameCodec.NeedsEntropyMigration(json);
+            var game = json!=null ? GameCodec.Read(json) : create();
+            // Commit initialization separately so a later failed operation cannot reroll entropy.
+            if(migrateEntropy || !exists)await Save(full,game);
             var result = operation(game);
-            if(write || !exists)
+            if(write || !exists || migrateEntropy)
             {
-                var temp = full + ".tmp";
-                await using(var stream = new FileStream(temp,FileMode.Create,FileAccess.Write,FileShare.None,4096,FileOptions.WriteThrough))
-                { await JsonSerializer.SerializeAsync(stream,game); stream.Flush(true); }
-                if(exists) File.Replace(temp,full,null); else File.Move(temp,full);
+                await Save(full,game);
             }
             return result;
         }
@@ -48,10 +55,19 @@ public sealed class PostgresGameStore(string connection, Func<Game> create) : IG
         await using var db = new NpgsqlConnection(connection); await db.OpenAsync();
         await using var tx = await db.BeginTransactionAsync();
         await using var read = new NpgsqlCommand("SELECT state::text FROM deepfield_campaign WHERE id=1 FOR UPDATE",db,tx);
-        var game=GameCodec.Read((string)(await read.ExecuteScalarAsync() ?? throw new InvalidOperationException("Campaign missing.")));
-        
+        var json=(string)(await read.ExecuteScalarAsync() ?? throw new InvalidOperationException("Campaign missing."));
+        var migrateEntropy=GameCodec.NeedsEntropyMigration(json);
+        var game=GameCodec.Read(json);
+        if(migrateEntropy)
+        {
+            await using var migrate=new NpgsqlCommand("UPDATE deepfield_campaign SET state=$1::jsonb WHERE id=1",db,tx);
+            migrate.Parameters.AddWithValue(JsonSerializer.Serialize(game));await migrate.ExecuteNonQueryAsync();
+            await tx.CommitAsync();
+            // Reacquire and reread after the migration commit, never apply an operation to stale state.
+            return await Execute(operation,write);
+        }
         var result=operation(game);
-        if(write)
+        if(write || migrateEntropy)
         {
             await using var save=new NpgsqlCommand("UPDATE deepfield_campaign SET state=$1::jsonb WHERE id=1",db,tx);
             save.Parameters.AddWithValue(JsonSerializer.Serialize(game)); await save.ExecuteNonQueryAsync();

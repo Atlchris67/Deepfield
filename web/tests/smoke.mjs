@@ -31,6 +31,7 @@ try{
  const publicHostStatus=await new Promise((done,fail)=>{const req=httpRequest(base+'/api/local/advance',{method:'POST',headers:{Host:'starzdeepfield.com',Authorization:'Bearer '+keys[0],'Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>done(res.statusCode));});req.on('error',fail);req.end(JSON.stringify({turn:1}));});
  check(publicHostStatus===404,'Public hostname acceleration denied');
  const initial=await state();
+ check(!JSON.stringify(initial).toLowerCase().includes('reconentropy'),'Campaign API omits private reconnaissance entropy');
  const order={turn:initial.turn,revision:initial.revision,requestId:'http-retry',orders:[{kind:'move',source:0,target:1,ships:4}]};
  check((await api('orders',{method:'PUT',body:order})).status===200,'HTTP order accepted');
  check((await api('orders',{method:'PUT',body:order})).status===200&&(await state()).revision===1,'HTTP retry idempotent');
