@@ -20,3 +20,7 @@ Economy/defense implementation is isolated on `feature/economy-defenses`, stacke
 3. Introduce a small counter-based combat roster; every strength must have a counter. Scout information should help choose composition. Start with a documented counter matrix and deterministic symmetric simulation before introducing production ship types. Keep generic existing ships compatible.
 
 Collector-shading blockades and the custom clan ship designer ("phase 42") are deferred. No custom hull designer, economy overhaul or unreviewed combat replacement belongs in the scout increment.
+
+## Counter simulation checkpoint
+
+`feature/combat-counter-lab` adds a separate console simulator, not a production engine reference. The five-hull matrix and exact deterministic candidate combat are described in [COUNTER_LAB.md](COUNTER_LAB.md). Its executable suite passes 177,199 assertions over 59,049 mirrored fleet pairs and every directed equal-budget matchup. This does not prove campaign balance or authorize replacing existing combat; typed fleet persistence, migration, scout composition, AI decisions, UI orders and siege interactions remain the next integration increment.

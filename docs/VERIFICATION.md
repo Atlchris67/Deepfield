@@ -1,5 +1,9 @@
 # Verification — 2026-10-14, Piedmont
 
+## Standalone counter-combat lab — 2026-10-15
+
+`dotnet run --project tools/Deepfield.CombatLab --disable-build-servers` passed **177,199 assertions**, exhaustively comparing **59,049 mirrored composition pairs** and all **20 directed equal-budget matchups**. Checked input immutability, survivor bounds, maximum-size arithmetic and malformed counts. The project is built by the solution but not referenced by the API/engine; it changes no campaign or save behavior. No browser rerun is needed for this console-only increment; the 34-check UI suite from the preceding commit remains the latest app evidence.
+
 ## Opt-in economy/defense increment — 2026-10-15
 
 - C# build passed, zero warnings/errors. 43 baseline + 27 reconnaissance + 14 economy/defense checks passed (84 total).
