@@ -37,6 +37,7 @@ public class Game
     public int Schema { get; set; } = 2;
     public ReconRates ReconRates { get; set; } = new();
     public int Seed { get; set; }
+    public string? ReconEntropy { get; set; }
     public int Turn { get; set; } = 1;
     public DateTimeOffset Deadline { get; set; }
     public int? Winner { get; set; }
@@ -51,9 +52,11 @@ public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
 {
-    public static Game Create(int seed, DateTimeOffset now, bool ai = true)
+    public static Game Create(int seed, DateTimeOffset now, bool ai = true, string? reconEntropy = null)
     {
         var g = new Game { Seed = seed, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
+        g.ReconEntropy = reconEntropy ?? Recon.NewEntropy();
+        Recon.ValidateEntropy(g.ReconEntropy);
         string[] names = ["Hearth", "Lumen", "Vesper", "Sable", "Meridian", "Halo", "Cinder", "Aster", "Drift", "Orison", "Cairn", "Dawn"];
         // Stable arithmetic layout, independent of runtime Random implementation.
         for (var i = 0; i < 12; i++) g.Stars.Add(new Star { Id = i, Name = names[i], X = 12 + i % 6 * 15, Y = 25 + i / 6 * 48 + (int)((uint)(seed + i * 7919) % 13) });
