@@ -19,8 +19,8 @@ public sealed class FileGameStore(string path, Func<Game> create) : IGameStore
         using(lease)
         {
             var exists = File.Exists(full);
-            var game = exists ? JsonSerializer.Deserialize<Game>(await File.ReadAllTextAsync(full))! : create();
-            if (game.Schema != 1) throw new InvalidOperationException("Unsupported save schema.");
+            var game = exists ? GameCodec.Read(await File.ReadAllTextAsync(full)) : create();
+            
             var result = operation(game);
             if(write || !exists)
             {
@@ -48,8 +48,8 @@ public sealed class PostgresGameStore(string connection, Func<Game> create) : IG
         await using var db = new NpgsqlConnection(connection); await db.OpenAsync();
         await using var tx = await db.BeginTransactionAsync();
         await using var read = new NpgsqlCommand("SELECT state::text FROM deepfield_campaign WHERE id=1 FOR UPDATE",db,tx);
-        var game=JsonSerializer.Deserialize<Game>((string)(await read.ExecuteScalarAsync() ?? throw new InvalidOperationException("Campaign missing.")))!;
-        if(game.Schema!=1) throw new InvalidOperationException("Unsupported save schema.");
+        var game=GameCodec.Read((string)(await read.ExecuteScalarAsync() ?? throw new InvalidOperationException("Campaign missing.")));
+        
         var result=operation(game);
         if(write)
         {
