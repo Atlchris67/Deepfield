@@ -195,6 +195,10 @@ try{
  const result=await state();check(result.stars[1].owner===0&&result.stars[1].fleets[0][2]===2&&result.stars[1].fleets[1].every(n=>n===0),'Mixed fleet counters bombers and establishes colony with interceptor escorts');
  check(result.intelligence.find(i=>i.mission==='deep').enemyComposition[3]===4&&result.intelligence.find(i=>i.mission==='battle').enemyComposition[3]===4,'Deep and surviving battle reports retain actual opening composition');
  check((await state(1)).intelligence.find(i=>i.mission==='battle').enemyComposition===null,'Destroyed rival fleet receives no exact survivor/composition report');
+ const battleText=await fleetPage.locator('.intelReport').filter({has:fleetPage.getByRole('heading',{name:/battle$/})}).innerText();
+ check(battleText.includes('4 enemy combat ships')&&battleText.includes('Unknown enemy scouts')&&battleText.includes('Unknown collectors'),'Battle intelligence renders unobserved scout and collector counts explicitly Unknown');
+ const deepText=await fleetPage.locator('.intelReport').filter({has:fleetPage.getByRole('heading',{name:/deep$/})}).innerText();
+ check(deepText.includes('0 enemy scouts')&&deepText.includes('0 collectors')&&!deepText.includes('Unknown'),'Deep intelligence preserves observed zero counts rather than labeling them Unknown');
  await fleetPage.getByRole('button',{name:'Lumen, observed',exact:true}).click();await fleetPage.screenshot({path:resolve(artifacts,'typed-fleet-desktop.png'),fullPage:true});await fleetPage.setViewportSize({width:390,height:844});await fleetPage.screenshot({path:resolve(artifacts,'typed-fleet-mobile.png'),fullPage:true});
  check(await fleetPage.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)&&fleetErrors.length===0,'Typed fleet editor/report UI has no mobile overflow or uncaught errors');
  check(await fleetPage.getByLabel('Selected system collectors').innerText().then(t=>t.includes('0')),'New colony prominently shows zero collectors');

@@ -9,7 +9,7 @@ export function IntelligencePanel({reports,turn,stars}:{reports:Intel[];turn:num
  <small>Last observed turn {report.turn} · {Math.max(0,turn-report.turn)} turn(s) ago · {new Date(report.at).toLocaleString()} · {report.phase}</small>
  <p>{report.mission==='battle'?(report.returned?'Battle observer survived':'Fleet destroyed — limited contact only'):(report.returned?'Scout returned':'Scout destroyed — limited contact only')}. {report.enemyPresent===true?'Enemy contact detected.':report.enemyPresent===false?'No enemy contact detected at that time.':'Contact unconfirmed.'}</p>
  {report.enemyComposition&&<p>Observed enemy composition: <Composition counts={report.enemyComposition}/></p>}{report.defense!=null&&<p>Observed fixed-defense strength: {report.defense}.</p>}{report.ownerObserved&&<p>Observed owner: {report.owner===null?'Unclaimed':report.owner===0?'Aurora Federation':'Ember Empire'}.</p>}
- {report.enemyShips!==null?<p>Exact at observation: {report.enemyShips} enemy combat ships · {report.enemyScouts} enemy scouts · {report.collectors} collectors.</p>:report.fleetBand!==null&&<p>Estimated enemy combat fleet: {report.fleetBand} ships.</p>}
+ {report.enemyShips!==null?<p>Exact at observation: {report.enemyShips} enemy combat ships · {report.enemyScouts ?? 'Unknown'} enemy scouts · {report.collectors ?? 'Unknown'} collectors.</p>:report.fleetBand!==null&&<p>Estimated enemy combat fleet: {report.fleetBand} ships.</p>}
  {stars.find(s=>s.id===report.star)?.visible&&<small>Live observation is also available on the map; this record remains historical.</small>}
  </article>)}</div>}
  </section>;
