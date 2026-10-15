@@ -1,6 +1,6 @@
-# Counter-combat laboratory (not campaign rules)
+# Counter-combat laboratory and opt-in preview
 
-`tools/Deepfield.CombatLab` is a standalone deterministic simulator and executable acceptance suite. It has no reference from the API or live engine; no save migration, new build orders or player ship changes occur. Scouts remain noncombat reconnaissance assets. This is the next tested development increment before differentiated combat hulls are wired into production rules.
+`tools/Deepfield.CombatLab` exercises the shared deterministic model in `src/Deepfield.Engine/Combat`. Only explicitly opted-in new typed campaigns use this model; existing generic campaigns retain their combat rules. Scouts remain noncombat reconnaissance assets. See TYPED_FLEETS.md for activation and compatibility.
 
 | Candidate hull | Provisional cost | Counters | Countered by |
 |---|---:|---|---|
@@ -17,4 +17,4 @@ The revised candidate uses an exact maximum-value simultaneous salvo. Each ship 
 Reinforcement cannot reduce total own surviving credit value: adding attackers cannot reduce their optimal damage; adding targets can increase opposing optimal damage by at most the added targets' value. Thus own remaining value cannot decrease, enemy remaining value cannot increase, and the rout comparison preserves that ordering. Individual hull-class survivors need not be monotone. Costs and the two-counter matrix are unchanged.
 
 Run `dotnet run --project tools/Deepfield.CombatLab`. The suite checks 59,049 mirrored composition pairs, 295,245 one-hull reinforcement cases, the reviewer's 8-interceptor versus 10-torpedo fixture with an added cruiser at four scales, 2,000 larger mixed reinforcements, input immutability, survivor bounds, maximum counts and every directed equal-budget matchup.
-Next integration work: migration-preserving typed fleets and orders; private deep-scout composition fields; AI choosing counters from its own dated intelligence; a clear fleet-composition editor; defense/siege interactions and multi-turn balance simulations. Do not add production hulls merely because isolated matchup tests pass. Collector shading and the custom clan designer remain deferred.
+Typed integration now includes migration-preserving fleets and orders, private dated composition, filtered AI decisions and a fleet-selection modal. Multi-turn balance tuning remains open. Collector shading and the custom clan designer remain deferred.

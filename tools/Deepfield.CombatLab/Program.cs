@@ -28,6 +28,7 @@ foreach(var left in fleets)foreach(var right in fleets)
 var huge=CounterBattle.Resolve(new([10000,10000,10000,10000,10000]),new([10000,10000,10000,10000,10000]));
 Check(huge.Winner=="draw","Maximum supported equal fleets must resolve without overflow");
 var rejected=false;try{CounterBattle.Resolve(new([-1,0,0,0,0]),new([0,0,0,0,0]));}catch(ArgumentException){rejected=true;}Check(rejected,"Negative fleets must be rejected");
+int Rank(Outcome outcome)=>outcome.Winner=="left"?2:outcome.Winner=="draw"?1:0;
 var reinforcementCases=0;
 foreach(var left in fleets)foreach(var right in fleets)
 {
@@ -36,7 +37,7 @@ foreach(var left in fleets)foreach(var right in fleets)
     {
         var reinforced=left.Counts.ToArray();reinforced[hull]++;
         var result=CounterBattle.Resolve(new(reinforced),right);
-        Check(result.Left.Value>=baseline.Left.Value,"Adding any hull cannot reduce own surviving value or turn victory into defeat");reinforcementCases++;
+        Check(result.Left.Value>=baseline.Left.Value&&Rank(result)>=Rank(baseline),"Adding any hull cannot reduce own surviving value or turn victory into defeat");reinforcementCases++;
     }
 }
 foreach(var scale in new[]{1,10,100,1000})

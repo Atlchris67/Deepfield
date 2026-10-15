@@ -74,3 +74,8 @@ The authorized destination is `https://github.com/Atlchris67/Deepfield`, initial
 Private reconnaissance entropy: scout branch 75 engine/store checks and 32 API/browser assertions; economy stack 89 checks and 35 API/browser assertions. Both built without warnings and passed frontend build/lint. PostgreSQL runtime remains untested.
 Counter correction: 474,448 assertions passed, including 295,245 one-hull reinforcement comparisons, four scales of the reported regression, and 2,000 larger mixed fleets. The model now uses simultaneous maximum-value salvos and decisive rout; campaign balance is not established.
 
+
+## Typed fleet UI checkpoint
+Engine/store suite: 114 passing checks (43 baseline, 32 reconnaissance, 14 economy, 25 typed fleet). Counter simulator: 474,448 assertions, including outcome-rank monotonicity in 295,245 reinforcement comparisons. Frontend build and lint pass. Isolated API/Edge suite: 64 passing assertions on port 5097, covering exact 8/10 and 3+6 rejection, same-turn builds, cancellation/back/Escape/in-flight cancellation, repeated clicks, stale inventory/revision, source changes, per-class inventory, clan cleanup, collectors, mixed combat, private reports and restart.
+Desktop and mobile modal screenshots inspected. Screenshots: test-results/expedition-modal-desktop.png, expedition-modal-mobile.png, typed-fleet-desktop.png and typed-fleet-mobile.png. These ignored artifacts contain isolated test campaigns only. PostgreSQL integration remains skipped; live port 5080 untouched.
+

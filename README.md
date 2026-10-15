@@ -79,7 +79,7 @@ Pop-Location
 
 The executable C# suite intentionally needs no test-framework dependency; it exits nonzero on failure. It checks the pure rules and real file-store concurrency/reopening/rollback. Set `DEEPFIELD_TEST_POSTGRES` only to a **disposable, empty test database** to additionally run the same transactional store checks against PostgreSQL. Do not point it at a real campaign.
 
-The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also works), temporary loopback API instances on port 5087, random process-only keys and isolated saves under ignored `test-results/`. It tests auth, private data, requests/retries, concurrent resolution, actual process restart, outage behavior, UI actions, mobile overflow and disabled acceleration. It closes every process it starts. Screenshots land in `test-results/command-desktop.png` and `command-mobile.png`. No external service is contacted by the running game.
+The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also works), temporary loopback API instances on port 5097, random process-only keys and isolated saves under ignored `test-results/`. It tests auth, private data, requests/retries, concurrent resolution, actual process restart, outage behavior, UI actions, mobile overflow and disabled acceleration. It closes every process it starts. Screenshots land in `test-results/command-desktop.png` and `command-mobile.png`. No external service is contacted by the running game.
 
 ## Repository map
 
@@ -93,4 +93,7 @@ The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also 
 
 PostgreSQL integration needs execution against an available disposable server. Before public hosting: individual users/invitations, membership and key rotation, rate limits, operational backup/recovery, and explicit proxy/HTTPS/access configuration. No DNS, Cloudflare Tunnel, firewall, external accounts, production credentials or persistent services have been configured. Additional campaigns, richer ship designs, diplomacy, balance tuning and accessibility testing are follow-up work. Federation/Empire use original names and styling, with no franchise assets.
 
-The initially empty repository has no separate PR base. The feature branch can be published, but creating `main` from an agreed baseline is a maintainer decision before a draft PR can be opened. No automatic merge is performed.
+The repository now has an agreed documentation baseline on main. Development is published as stacked draft PRs; none is merged automatically.
+
+## Typed fleet preview
+See [typed fleet rules and local preview](docs/TYPED_FLEETS.md) for opt-in hulls, the expedition selector, settlement timing and a separate port/save path. Existing campaigns retain generic ship rules.
