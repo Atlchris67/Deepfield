@@ -70,11 +70,11 @@ public static class ReconChecks
         foreach(var star in legacy["Stars"]!.AsArray())star!.AsObject().Remove("Scouts");
         foreach(var clan in legacy["Clans"]!.AsArray())clan!.AsObject().Remove("Intelligence");
         var migrated=GameCodec.Read(legacy.ToJsonString());
-        Check(migrated.Schema==2&&migrated.Stars[0].Ships[0]==8&&migrated.Deadline==g.Deadline&&migrated.Clans[0].Intelligence.Count==0,"Schema 1 migration preserves campaign without fabricating intelligence");
+        Check(migrated.Schema==3&&migrated.Stars[0].Ships[0]==8&&migrated.Deadline==g.Deadline&&migrated.Clans[0].Intelligence.Count==0,"Schema 1 migration preserves campaign without fabricating intelligence");
         Check(Rules.Submit(migrated,0,request,now)==1&&migrated.Clans[0].Orders.Count==1,"Legacy receipt bytes still match retried old orders");
         var directory=Path.Combine(Path.GetTempPath(),"deepfield-recon-"+Guid.NewGuid());Directory.CreateDirectory(directory);var path=Path.Combine(directory,"legacy.json");await File.WriteAllTextAsync(path,legacy.ToJsonString());
         var store=new FileGameStore(path,()=>throw new Exception("Expected existing save"));await store.Execute(x=>Rules.Submit(x,0,request,now));
-        Check(GameCodec.Read(await File.ReadAllTextAsync(path)).Schema==2,"File store atomically persists compatible upgraded save");
+        Check(GameCodec.Read(await File.ReadAllTextAsync(path)).Schema==3,"File store atomically persists compatible upgraded save");
         var entropy=await store.Execute(x=>x.ReconEntropy,false);var reopenedMigration=new FileGameStore(path,()=>throw new Exception("Expected migrated save"));
         Check(await reopenedMigration.Execute(x=>x.ReconEntropy,false)==entropy,"Legacy migration persists private entropy across read-only reopening");
         var failedPath=Path.Combine(directory,"failed-operation.json");await File.WriteAllTextAsync(failedPath,legacy.ToJsonString());var failedStore=new FileGameStore(failedPath,()=>throw new Exception("Expected fixture"));var beforeFailure=-1;

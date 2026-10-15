@@ -12,7 +12,7 @@ public record ReconRates(int Distant = 90, int Close = 65, int Deep = 35)
 }
 public record Intelligence(string Id, int Star, int Turn, DateTimeOffset At, string Phase, string Mission,
     bool Returned, bool? EnemyPresent, bool OwnerObserved, int? Owner, string? FleetBand, int? EnemyShips,
-    int? EnemyScouts, int? Collectors);
+    int? EnemyScouts, int? Collectors, int? Defense = null);
 
 public static class GameCodec
 {
@@ -24,12 +24,13 @@ public static class GameCodec
     public static Game Read(string json)
     {
         var game = JsonSerializer.Deserialize<Game>(json) ?? throw new InvalidOperationException("Invalid campaign.");
-        if (game.Schema is not (1 or 2)) throw new InvalidOperationException("Unsupported save schema.");
+        if (game.Schema is not (1 or 2 or 3)) throw new InvalidOperationException("Unsupported save schema.");
+        if (game.EconomyVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported economy ruleset.");
         game.ReconEntropy ??= Recon.NewEntropy();
         Recon.ValidateEntropy(game.ReconEntropy);
         // Additive migration: existing ships, pending orders, serialized receipt payloads,
         // deadlines and history are retained. No observations are invented retrospectively.
-        game.Schema = 2;
+        game.Schema = 3;
         return game;
     }
 }
@@ -52,7 +53,7 @@ public static class Recon
     public static void Resolve(Game g, DateTimeOffset at)
     {
         // Snapshot avoids team iteration order changing intelligence about scout losses.
-        var snapshot = g.Stars.Select(s => new { s.Owner, s.Collectors, Ships = s.Ships.ToArray(), Scouts = s.Scouts.ToArray() }).ToArray();
+        var snapshot = g.Stars.Select(s => new { s.Owner, s.Collectors, s.Defense, Ships = s.Ships.ToArray(), Scouts = s.Scouts.ToArray() }).ToArray();
         for (var team = 0; team < g.Clans.Count; team++)
         {
             var occurrences = new Dictionary<(int,int,string),int>();
@@ -70,7 +71,8 @@ public static class Recon
                     returned && mission is "close" or "deep" ? Band(target.Ships[enemy]) : null,
                     returned && mission == "deep" ? target.Ships[enemy] : null,
                     returned && mission == "deep" ? target.Scouts[enemy] : null,
-                    returned && mission == "deep" ? target.Collectors : null);
+                    returned && mission == "deep" ? target.Collectors : null,
+                    returned && mission == "deep" ? target.Defense : null);
                 g.Clans[team].Intelligence.Insert(0,intel);
                 g.Clans[team].Reports.Insert(0,$"Turn {g.Turn}: {mission} scout at {g.Stars[order.Target].Name}: " +
                     (returned ? "returned with a dated intelligence report." : "lost; only limited contact information received."));

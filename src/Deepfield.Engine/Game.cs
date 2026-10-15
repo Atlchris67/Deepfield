@@ -31,10 +31,12 @@ public class Star
     public int Collectors { get; set; }
     public int[] Ships { get; set; } = [0, 0];
     public int[] Scouts { get; set; } = [0, 0];
+    public int Defense { get; set; }
 }
 public class Game
 {
-    public int Schema { get; set; } = 2;
+    public int Schema { get; set; } = 3;
+    public int EconomyVersion { get; set; }
     public ReconRates ReconRates { get; set; } = new();
     public int Seed { get; set; }
     public string? ReconEntropy { get; set; }
@@ -44,17 +46,18 @@ public class Game
     public List<Star> Stars { get; set; } = [];
     public List<Clan> Clans { get; set; } = [];
 }
-public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null);
+public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null, int? Defense = null);
 public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, string Name, int Credits, int Revision,
     List<Order> Orders, List<string> Reports, List<Message> Messages, List<StarView> Stars, int Energy, int Goal = 8,
-    List<Intelligence>? Intelligence = null, ReconRates? ReconRates = null);
+    List<Intelligence>? Intelligence = null, ReconRates? ReconRates = null, int EconomyVersion = 0, int NextIncome = 0);
 public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
 {
-    public static Game Create(int seed, DateTimeOffset now, bool ai = true, string? reconEntropy = null)
+    public static Game Create(int seed, DateTimeOffset now, bool ai = true, int economyVersion = 0, string? reconEntropy = null)
     {
-        var g = new Game { Seed = seed, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
+        if(economyVersion is not (0 or 1)) throw new RuleException("Unknown economy version.");
+        var g = new Game { Seed = seed, EconomyVersion = economyVersion, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
         g.ReconEntropy = reconEntropy ?? Recon.NewEntropy();
         Recon.ValidateEntropy(g.ReconEntropy);
         string[] names = ["Hearth", "Lumen", "Vesper", "Sable", "Meridian", "Halo", "Cinder", "Aster", "Drift", "Orison", "Cairn", "Dawn"];
@@ -74,19 +77,25 @@ public static class Rules
         var c = g.Clans[team];
         return new(g.Turn, g.Deadline, g.Winner, team, c.Name, c.Credits, c.Revision, [..c.Orders], [..c.Reports], [..c.Messages],
             g.Stars.Select(s => { var visible = s.Owner == team || s.Ships[team] > 0; var known = c.Known.Contains(s.Id);
-                return new StarView(s.Id, known ? s.Name : "Uncharted", s.X, s.Y, known, visible, visible ? s.Owner : null, visible ? s.Collectors : null, visible ? [..s.Ships] : null, visible ? [..s.Scouts] : null); }).ToList(),
-            g.Stars.Where(s => s.Owner == team).Sum(s => s.Collectors), Intelligence: [..c.Intelligence], ReconRates: g.ReconRates);
+                return new StarView(s.Id, known ? s.Name : "Uncharted", s.X, s.Y, known, visible, visible ? s.Owner : null, visible ? s.Collectors : null, visible ? [..s.Ships] : null, visible ? [..s.Scouts] : null, visible ? s.Defense : null); }).ToList(),
+            g.Stars.Where(s => s.Owner == team).Sum(s => s.Collectors), Intelligence: [..c.Intelligence], ReconRates: g.ReconRates,
+            EconomyVersion: g.EconomyVersion, NextIncome: g.Stars.Where(s=>s.Owner==team).Sum(s=>Economy.Income(g,s)));
     }
     public static void Validate(View v, List<Order> orders)
     {
         if (orders.Count > 24 || orders.Any(o => o is null)) throw new RuleException("Provide at most 24 non-null orders.");
-        var cost = 0; var moved = new Dictionary<int,int>(); var scouts = new Dictionary<int,int>();
+        var cost = 0; var moved = new Dictionary<int,int>(); var scouts = new Dictionary<int,int>(); var defenses = new Dictionary<int,int>();
         foreach (var o in orders)
         {
             var s = v.Stars.SingleOrDefault(s => s.Id == o.Source);
             if (s is null || !s.Visible) throw new RuleException("Source is not under observation.");
             switch (o.Kind)
             {
+                case "defense":
+                    if(v.EconomyVersion!=1 || s.Owner!=v.Team) throw new RuleException("Fixed defenses require an owned colony in economy version 1.");
+                    defenses[s.Id]=defenses.GetValueOrDefault(s.Id)+2;
+                    if((s.Defense??0)+defenses[s.Id]>6) throw new RuleException("Maximum defense strength is 6 per colony.");
+                    cost+=8;break;
                 case "scoutbuild":
                     if (s.Owner != v.Team || o.Ships < 1 || o.Ships > 100) throw new RuleException("Build 1–100 scouts at your colony.");
                     cost += o.Ships * 3; break;
@@ -132,6 +141,8 @@ public static class Rules
         var orders = new List<Order>(); var budget = v.Credits;
         foreach (var s in v.Stars.Where(s => s.Visible && s.Owner == v.Team).OrderBy(s => s.Id))
         {
+            if(v.EconomyVersion==1 && s.Defense<=4 && budget>=8 && v.Intelligence!.Any(i=>i.EnemyPresent==true&&v.Turn-i.Turn<=2&&Linked(s.Id,i.Star)))
+            {orders.Add(new("defense",s.Id));budget-=8;}
             if (s.Scouts![v.Team] == 0 && budget >= 3) { orders.Add(new("scoutbuild",s.Id,Ships:1)); budget -= 3; }
             if (budget >= 30) { orders.Add(new("collector",s.Id)); budget -= 30; }
             if (budget >= 10) { orders.Add(new("build",s.Id,Ships:2)); budget -= 10; }
@@ -157,6 +168,7 @@ public static class Rules
             var s = g.Stars[o.Source]; var c = g.Clans[t];
             if (o.Kind == "build") { delta[s.Id,t] += o.Ships; c.Credits -= 5 * o.Ships; }
             if (o.Kind == "scoutbuild") { s.Scouts[t] += o.Ships; c.Credits -= 3 * o.Ships; }
+            if (o.Kind == "defense") { s.Defense+=2;c.Credits-=8; }
             if (o.Kind == "collector") { s.Collectors++; c.Credits -= 30; }
             if (o.Kind == "move") { delta[s.Id,t] -= o.Ships; delta[o.Target,t] += o.Ships; Reveal(g,t,o.Target); c.Reports.Insert(0,$"Fleet of {o.Ships} reached {g.Stars[o.Target].Name}."); }
         }
@@ -165,14 +177,15 @@ public static class Rules
         Recon.Resolve(g,now);
         foreach (var s in g.Stars)
         {
-            if(s.Ships[0]>0 && s.Ships[1]>0)
+            if(g.EconomyVersion==1) Economy.Combat(g,s);
+            else if(s.Ships[0]>0 && s.Ships[1]>0)
             {
                 var lost = Math.Min(s.Ships[0],s.Ships[1]); s.Ships[0]-=lost; s.Ships[1]-=lost;
                 for(var t=0;t<2;t++) g.Clans[t].Reports.Insert(0,$"Battle at {s.Name}: lost {lost} ships; {s.Ships[t]} remain.");
             }
             for(var t=0;t<2;t++) if(s.Ships[t]>0)
             {
-                if(s.Owner != null && s.Owner != t) { var defender=s.Owner.Value; s.Owner=null; s.Collectors=0; s.Scouts[defender]=0; g.Clans[defender].Reports.Insert(0,$"Colony at {s.Name} was lost; grounded scouts destroyed."); }
+                if(s.Owner != null && s.Owner != t) { var defender=s.Owner.Value; s.Owner=null; s.Collectors=0; s.Defense=0; s.Scouts[defender]=0; g.Clans[defender].Reports.Insert(0,$"Colony at {s.Name} was lost; grounded scouts destroyed."); }
                 if(s.Owner == null && s.Ships[t]>=2) { s.Ships[t]-=2; s.Owner=t; g.Clans[t].Reports.Insert(0,$"Founded colony at {s.Name}; two ships converted to habitats."); }
                 Reveal(g,t,s.Id);
             }
@@ -181,7 +194,7 @@ public static class Rules
         for(var t=0;t<2;t++)
         {
             var c=g.Clans[t]; var owned=g.Stars.Where(s=>s.Owner==t).ToList();
-            var income=owned.Count*15; c.Credits+=income;
+            var income=owned.Sum(s=>Economy.Income(g,s)); c.Credits+=income;
             c.Reports.Insert(0,$"Turn {g.Turn} complete. Income {income}; {owned.Count} colonies; {owned.Sum(s=>s.Collectors)}/8 energy collectors.");
             if(owned.Count>=4 && owned.Sum(s=>s.Collectors)>=8) winners.Add(t);
             c.Orders.Clear(); c.Revision=0; c.Reports=c.Reports.Take(100).ToList();

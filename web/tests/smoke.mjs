@@ -8,7 +8,7 @@ import { request as httpRequest } from 'node:http';
 
 const root=resolve('..');
 const artifacts=resolve(root,'test-results'); await mkdir(artifacts,{recursive:true});
-const save=resolve(artifacts,`smoke-${Date.now()}.json`);
+let save=resolve(artifacts,`smoke-${Date.now()}.json`);
 const keys=[randomBytes(24).toString('hex'),randomBytes(24).toString('hex')];
 const base='http://127.0.0.1:5097';
 let processHandle,browser;
@@ -117,5 +117,17 @@ try{
  // Production must refuse the local-only persistence fallback entirely.
  let rejected=false;try{await start({ASPNETCORE_ENVIRONMENT:'Production'});}catch(e){rejected=String(e).includes('PostgreSQL connection required');}
  check(rejected,'Production refuses development file store and test endpoint');
+ await stop();save=resolve(artifacts,`economy-${Date.now()}.json`);await start({EconomyVersion:'1'});
+ check((await state()).economyVersion===1&&(await state()).nextIncome===18,'New economy preview starts with collector income; previous save untouched');
+ browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL??'msedge',headless:true});
+ const economyPage=await browser.newPage({viewport:{width:1440,height:1100}});await economyPage.goto(base);
+ await economyPage.getByLabel('Clan access key').fill(keys[0]);await economyPage.getByRole('button',{name:'Enter command deck'}).click();await economyPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await economyPage.getByLabel('Action at Hearth').selectOption('defense');await economyPage.getByRole('button',{name:'+ Add to draft'}).click();
+ await economyPage.getByLabel('Action at Hearth').selectOption('collector');await economyPage.getByRole('button',{name:'+ Add to draft'}).click();
+ await economyPage.getByRole('button',{name:'Commit orders',exact:true}).click();await economyPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
+ await economyPage.getByRole('button',{name:'Resolve one test turn'}).click();await economyPage.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ const economicState=await state();check(economicState.stars[0].defense===2&&economicState.credits===42&&economicState.nextIncome===20,'Browser builds fixed defenses and collector with correct income/cost');
+ check((await state(1)).stars[0].defense===null,'Enemy fixed defenses remain hidden through API');
+ await economyPage.screenshot({path:resolve(artifacts,'economy-defense-desktop.png'),fullPage:true});
  console.log(`${count} API/browser checks passed; screenshots in ${artifacts}`);
 }finally{if(browser)await browser.close();await stop();}

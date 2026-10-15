@@ -13,6 +13,8 @@ The running playtest and its save remain untouched. Development uses a separate 
 
 ## Next bounded increments
 
+Economy/defense implementation is isolated on `feature/economy-defenses`, stacked after the scout review branch. Schema 3 accepts schema 1/2 saves and retains `EconomyVersion=0` unless a new campaign is explicitly created with version 1. Version 1 uses collector income bonuses 3/2/1 per colony (then zero), defense cost 8 per 2 strength, cap 6, permanent attrition and no regeneration. Tests cover 1,575 mirrored fleet/defense cases, maximum defenses being conquered, hidden-defense privacy and legacy economy preservation. This adds no new mobile combat classes yet.
+
 1. Extend intelligence with actual combat encounter observations, maintaining pre/post-combat distinctions and avoiding omniscient survivor reports.
 2. Add an explicitly versioned economy/defense ruleset: collector income with diminishing returns, capped fixed defense capacity, and non-invulnerable siege paths. Preserve old campaign behavior until migration/activation is chosen. Test income snowball and maximum-defense defeat before tuning victory duration.
 3. Introduce a small counter-based combat roster; every strength must have a counter. Scout information should help choose composition. Start with a documented counter matrix and deterministic symmetric simulation before introducing production ship types. Keep generic existing ships compatible.

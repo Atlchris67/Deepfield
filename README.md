@@ -1,5 +1,15 @@
 # Deepfield
 
+## Opt-in economy and defense preview
+
+For a **new isolated test campaign**, set a fresh `SavePath` and launch with `-EconomyPreview` (equivalently `EconomyVersion=1` when creating a campaign). Existing saves retain their stored ruleset; schema upgrades do not activate new balance rules. Never reuse the running playtest path for a preview.
+
+In this preview each colony still earns 15 credits, plus collector income: the first collector adds 3, the second 2, the third 1, and further collectors add no income. Maximum income is **21 per colony per turn**. Collectors still cost 30 and count toward the existing Type III goal. Newly completed collectors earn income that turn.
+
+Fixed defenses cost **8 credits for 2 strength**, capped at **6 strength per colony** across all queued purchases. They finish before arrivals/combat, cannot move, and permanently lose strength when attacked; no automatic regeneration. Defenses absorb casualties before the colony's ships. Combat otherwise remains deterministic one-for-one strength attrition. Eight attacking ships can destroy an ungarrisoned strength-6 defense and found a colony with the final two ships. Capture destroys remaining infrastructure. Scouts' deep reports include observed defense strength; no hidden defenses affect mission-risk estimates.
+
+These values are an explicitly provisional, bounded test ruleset, not a finished balance model. Specialized ship counters, blockades and ship design remain separate work.
+
 ## Scout reconnaissance increment
 
 Dedicated scouts cost **3 credits**; existing combat/colony ships still cost 5. Build scouts on your colony and use **Scout reconnaissance** on a later turn. Each mission uses one existing scout, visits an adjacent charted system, and attempts to return to its launch colony within the same turn. Scouts cannot fight, colonize, or use ordinary fleet movement. Survivors can be reused next turn; failed missions consume the scout. Grounded scouts are destroyed if their colony falls.

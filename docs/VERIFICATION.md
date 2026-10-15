@@ -1,5 +1,13 @@
 # Verification — 2026-10-14, Piedmont
 
+## Opt-in economy/defense increment — 2026-10-15
+
+- C# build passed, zero warnings/errors. 43 baseline + 27 reconnaissance + 14 economy/defense checks passed (84 total).
+- Defense verification includes 1,575 mirrored fleet/defense cases, permanent damage, aggregate cap enforcement, conquest of maximum defenses, and no hidden-defense influence on views/AI.
+- Collector income cap and exact costs are verified. Schema-2 migration preserves economy version 0, zero initial defenses, and deadlines; all old receipt/scout checks still pass.
+- 34 API/browser checks passed, including a separate fresh version-1 save with actual collector/defense build orders, income/cost assertions and API fog-of-war. Legacy and preview saves remain distinct. TypeScript checks and production frontend build pass.
+- Only isolated test port 5097 and disposable saves were used. No current playtest changes. PostgreSQL integration remains untested without a disposable server.
+
 ## Scout increment — 2026-10-15
 
 Isolated checkout `Deepfield-scouts`, branch `feature/scout-isr`; no running-playtest files, processes, keys or save were changed.
