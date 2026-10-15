@@ -31,3 +31,5 @@ This is prepared configuration, not a successful run. Do not stop port 5080, cha
 
 ## Verified for this increment
 The normal SDK command above built all four projects successfully with zero warnings/errors (10.89 seconds). The frontend TypeScript/Vite build passed. A static comparison confirmed both solutions reference the same four existing projects, and the new launch-profile JSON parsed with loopback port 5098 and acceleration disabled. Visual Studio IDE opening/building and application execution remain untested; no compatible IDE was detected, and the known Windows block remains. No game binary or check executable was run.
+
+After this build, the emitted API DLL has SHA256 840C27D1858E77A0F8344E89B3A6CA5FF145CB2C22F8CC514547FC9750EA7415, different from the previously blocked build recorded above. This new binary has not been executed or confirmed accepted by Windows. A changed build hash is not evidence that the existing policy issue is resolved; no launch retry was made.
