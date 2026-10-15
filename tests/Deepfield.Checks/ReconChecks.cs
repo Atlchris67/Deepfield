@@ -9,7 +9,7 @@ public static class ReconChecks
     {
         var count=0; var now=DateTimeOffset.Parse("2026-10-15T12:00:00Z");
         void Check(bool ok,string label){if(!ok)throw new Exception(label);count++;Console.WriteLine("PASS "+label);}
-        Game Fixture(){var g=Rules.Create(42,now,false);g.Stars[0].Scouts[0]=4;g.Stars[1].Owner=1;g.Stars[1].Ships[1]=7;g.Stars[1].Scouts[1]=2;g.Stars[1].Collectors=3;return g;}
+        Game Fixture(){var g=Rules.Create(42,now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");g.Stars[0].Scouts[0]=4;g.Stars[1].Owner=1;g.Stars[1].Ships[1]=7;g.Stars[1].Scouts[1]=2;g.Stars[1].Collectors=3;return g;}
         Game Mission(string mission,bool returns){var g=Fixture();g.ReconRates=returns?new(100,100,100):new(0,0,0);Rules.Submit(g,0,new(1,0,"mission",[new("recon",0,1,1,mission)]),now);return g;}
         var g=Mission("deep",true); var copy=GameCodec.Read(JsonSerializer.Serialize(g));var due=g.Deadline;
         Rules.Resolve(g,due);Rules.Resolve(copy,due);
@@ -48,14 +48,25 @@ public static class ReconChecks
         try{Rules.Validate(Rules.Observe(noCombatShips,0),[new("move",0,1,1)]);}catch(RuleException){moveRejected=true;}
         Check(moveRejected,"Scout inventory cannot be spent as ordinary moving/combat ships");
         Check(new ReconRates()==new ReconRates(90,65,35),"Initial distant/close/deep return targets are 90/65/35");
+        var unpredictableA=Rules.Create(42017,now,false);var unpredictableB=Rules.Create(42017,now,false);
+        Check(unpredictableA.ReconEntropy!=unpredictableB.ReconEntropy,"Identical public map seeds receive independent private game entropy");
+        Check(JsonSerializer.Serialize(Rules.Observe(unpredictableA,0))==JsonSerializer.Serialize(Rules.Observe(unpredictableB,0))&&!JsonSerializer.Serialize(Rules.Observe(unpredictableA,0)).Contains(unpredictableA.ReconEntropy!),"Private entropy never enters clan views or reports");
+        unpredictableA.Turn=2;unpredictableB.Turn=2;var oldPredictions=new List<int>();var privateOutcomes=new List<int>();var secondOutcomes=new List<int>();
+        foreach(var target in new[]{1,6})foreach(var tier in new[]{"distant","close","deep"})
+        {
+            var publicKey=$"recon-v1|42017|2|0|0|{target}|{tier}|0";
+            oldPredictions.Add((int)(System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(publicKey)))%100));
+            var mission=new Order("recon",0,target,1,tier);privateOutcomes.Add(Recon.Roll(unpredictableA,0,mission,0));secondOutcomes.Add(Recon.Roll(unpredictableB,0,mission,0));
+        }
+        Check(!oldPredictions.SequenceEqual(privateOutcomes)&&!privateOutcomes.SequenceEqual(secondOutcomes),"Documented seed and all six public route/tier inputs cannot reproduce private rolls");
         foreach(var invalid in new List<Order>[] { [new("recon",0,11,1,"deep")], [new("recon",0,1,2,"deep")], [new("recon",0,1,1,"bogus")], Enumerable.Repeat(order,5).ToList() })
         {var rejected=false;try{Rules.Validate(Rules.Observe(a,0),invalid);}catch(RuleException){rejected=true;}Check(rejected,"Reject illegal scout mission or aggregate oversubscription");}
-        g=Rules.Create(42,now,false);var failed=false;try{Rules.Validate(Rules.Observe(g,0),[new("scoutbuild",0,Ships:1),order]);}catch(RuleException){failed=true;}
+        g=Rules.Create(42,now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");var failed=false;try{Rules.Validate(Rules.Observe(g,0),[new("scoutbuild",0,Ships:1),order]);}catch(RuleException){failed=true;}
         Check(failed,"Newly built scouts cannot fly on their construction turn");
         Rules.Submit(g,0,new(1,0,"scoutbuild",[new("scoutbuild",0,Ships:2)]),now);Rules.Resolve(g,g.Deadline);
         Check(g.Stars[0].Scouts[0]==2&&g.Clans[0].Credits==69,"Scouts cost 3 credits each and preserve ordinary income");
-        g=Rules.Create(42,now,false);var request=new Submission(1,0,"legacy-retry",[new("build",0,Ships:2)]);Rules.Submit(g,0,request,now);
-        var legacy=JsonNode.Parse(JsonSerializer.Serialize(g))!;legacy["Schema"]=1;legacy.AsObject().Remove("ReconRates");
+        g=Rules.Create(42,now,false, reconEntropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");var request=new Submission(1,0,"legacy-retry",[new("build",0,Ships:2)]);Rules.Submit(g,0,request,now);
+        var legacy=JsonNode.Parse(JsonSerializer.Serialize(g))!;legacy["Schema"]=1;legacy.AsObject().Remove("ReconRates");legacy.AsObject().Remove("ReconEntropy");
         foreach(var star in legacy["Stars"]!.AsArray())star!.AsObject().Remove("Scouts");
         foreach(var clan in legacy["Clans"]!.AsArray())clan!.AsObject().Remove("Intelligence");
         var migrated=GameCodec.Read(legacy.ToJsonString());
@@ -64,6 +75,11 @@ public static class ReconChecks
         var directory=Path.Combine(Path.GetTempPath(),"deepfield-recon-"+Guid.NewGuid());Directory.CreateDirectory(directory);var path=Path.Combine(directory,"legacy.json");await File.WriteAllTextAsync(path,legacy.ToJsonString());
         var store=new FileGameStore(path,()=>throw new Exception("Expected existing save"));await store.Execute(x=>Rules.Submit(x,0,request,now));
         Check(GameCodec.Read(await File.ReadAllTextAsync(path)).Schema==3,"File store atomically persists compatible upgraded save");
+        var entropy=await store.Execute(x=>x.ReconEntropy,false);var reopenedMigration=new FileGameStore(path,()=>throw new Exception("Expected migrated save"));
+        Check(await reopenedMigration.Execute(x=>x.ReconEntropy,false)==entropy,"Legacy migration persists private entropy across read-only reopening");
+        var failedPath=Path.Combine(directory,"failed-operation.json");await File.WriteAllTextAsync(failedPath,legacy.ToJsonString());var failedStore=new FileGameStore(failedPath,()=>throw new Exception("Expected fixture"));var beforeFailure=-1;
+        try{await failedStore.Execute<bool>(x=>{beforeFailure=Recon.Roll(x,0,order,0);throw new RuleException("simulated interrupted operation");});}catch(RuleException){}
+        Check(await new FileGameStore(failedPath,()=>throw new Exception("Expected fixture")).Execute(x=>Recon.Roll(x,0,order,0),false)==beforeFailure,"Migration entropy is committed before failed operation, preventing retry rerolls");
         var reconPath=Path.Combine(directory,"recon.json");var reconStore=new FileGameStore(reconPath,()=>Mission("deep",false));
         await reconStore.Execute(x=>Rules.Resolve(x,due));var reopened=new FileGameStore(reconPath,()=>throw new Exception("Expected save"));
         Check(!await reopened.Execute(x=>Rules.Resolve(x,due))&&await reopened.Execute(x=>x.Clans[0].Intelligence.Count,false)==1&&await reopened.Execute(x=>x.Stars[0].Scouts[0],false)==3,"Recon losses and reports persist once across restart/retry");
