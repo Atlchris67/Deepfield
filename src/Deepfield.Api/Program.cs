@@ -5,6 +5,8 @@ using Deepfield.Api;
 using Deepfield.Engine;
 
 var builder=WebApplication.CreateBuilder(args);
+var connection=builder.Configuration.GetConnectionString("Deepfield");
+var savePath=PreviewStorage.Resolve(builder.Configuration.GetValue<bool>("IsolatedPreview"),builder.Environment.IsDevelopment(),connection,builder.Configuration["SavePath"]);
 builder.WebHost.ConfigureKestrel(o=>o.Limits.MaxRequestBodySize=16*1024);
 var keys = new[]{builder.Configuration["Teams:0:Key"],builder.Configuration["Teams:1:Key"]};
 if(keys.Any(k=>string.IsNullOrWhiteSpace(k) || k.Length<24) || keys[0]==keys[1])
@@ -12,7 +14,7 @@ if(keys.Any(k=>string.IsNullOrWhiteSpace(k) || k.Length<24) || keys[0]==keys[1])
 var localTest=builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("LocalTest");
 Game NewGame()=>Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0));
 IGameStore store;
-var connection=builder.Configuration.GetConnectionString("Deepfield");
+
 if(!string.IsNullOrEmpty(connection))
 {
     var pg=new PostgresGameStore(connection,NewGame); await pg.Initialize(); store=pg;
@@ -20,7 +22,7 @@ if(!string.IsNullOrEmpty(connection))
 else
 {
     if(!builder.Environment.IsDevelopment()) throw new InvalidOperationException("PostgreSQL connection required outside Development.");
-    store=new FileGameStore(builder.Configuration["SavePath"] ?? "data/campaign.json",NewGame);
+    store=new FileGameStore(savePath,NewGame);
 }
 builder.Services.AddSingleton(store);
 builder.Services.AddHostedService<TurnWorker>();
