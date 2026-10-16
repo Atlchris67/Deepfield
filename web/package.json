@@ -10,7 +10,10 @@
     "test:fleet": "node tests/fleet-selection.mjs",
     "test:fleet-ui": "node tests/fleet-component.mjs",
     "test:intel-ui": "node tests/intel-component.mjs",
-    "test:draft-ui": "node tests/draft-session.mjs"
+    "test:draft-ui": "node tests/draft-session.mjs",
+    "test:edit": "node tests/draft-editing.mjs",
+    "test:edit-ui": "node tests/draft-edit-ui.mjs",
+    "test:frontend": "npm run test:fleet && npm run test:fleet-ui && npm run test:intel-ui && npm run test:draft-ui && npm run test:edit && npm run test:edit-ui"
   },
   "dependencies": {
     "react": "19.2.0",
