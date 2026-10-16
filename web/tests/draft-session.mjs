@@ -2,6 +2,7 @@
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
 const server=await createServer({configFile:false,root:process.cwd(),server:{host:'127.0.0.1',port:0},appType:'mpa'});
 let browser,checks=0;function check(value,name){assert.ok(value,name);checks++;console.log('PASS '+name);}
 function campaign(team=0){return {turn:1,deadline:'2099-01-01T00:00:00Z',winner:null,team,name:team?'Ember fixture':'Aurora fixture',credits:60,revision:0,orders:[],reports:[],messages:[],stars:[0,1].map(id=>({id,name:id?'Lumen':'Hearth',x:20+id*20,y:40,known:true,visible:true,owner:team,collectors:1,ships:team?[0,8]:[8,0],scouts:[0,0],defense:0,fleets:null})),energy:2,goal:8,intelligence:[],reconRates:{distant:90},economyVersion:0,nextIncome:30,combatVersion:0};}
@@ -99,6 +100,7 @@ try{
  check(await run().isEnabled(),'Failed Run turn releases control for same-turn retry');
  advanceMode='stale';await run().click();await page.getByRole('button',{name:'Leave',exact:true}).focus();await flush();await page.getByRole('status').filter({hasText:'Turn already resolved'}).waitFor();
  check(advances.at(-1).turn===advances.at(-2).turn,'Uncertain retry keeps expected turn; stale response refreshes without claiming another advancement');
+ await mkdir('../test-results',{recursive:true});
  await page.screenshot({path:'../test-results/run-turn-preview.png',fullPage:true});
  await add();putMode='network';await commit().click();await page.getByRole('alert').waitFor();
  check(await run().isDisabled(),'Ambiguous order submission blocks Run turn until resolved');
