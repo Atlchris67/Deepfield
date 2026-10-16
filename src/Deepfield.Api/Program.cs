@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Deepfield.Api;
@@ -11,7 +10,7 @@ builder.WebHost.ConfigureKestrel(o=>o.Limits.MaxRequestBodySize=16*1024);
 var keys = new[]{builder.Configuration["Teams:0:Key"],builder.Configuration["Teams:1:Key"]};
 if(keys.Any(k=>string.IsNullOrWhiteSpace(k) || k.Length<24) || keys[0]==keys[1])
     throw new InvalidOperationException("Set distinct Teams__0__Key and Teams__1__Key environment values (at least 24 characters).");
-var localTest=builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("LocalTest");
+var localTest=LocalTurns.Enabled(builder.Environment.IsDevelopment(),builder.Configuration.GetValue<bool>("IsolatedPreview"),builder.Configuration.GetValue<bool>("LocalTest"));
 Game NewGame()=>Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0));
 IGameStore store;
 
@@ -43,9 +42,7 @@ app.Use(async(ctx,next)=>
     catch(RuleException ex) { ctx.Response.StatusCode=409; await ctx.Response.WriteAsJsonAsync(new{error=ex.Message}); }
 });
 int Team(HttpContext c)=>(int)c.Items["team"]!;
-bool CanAccelerate(HttpContext c)=>localTest && c.Connection.RemoteIpAddress is {} ip && IPAddress.IsLoopback(ip)
-    && (c.Request.Host.Host is "localhost" or "127.0.0.1" or "[::1]")
-    && !c.Request.Headers.ContainsKey("Forwarded") && !c.Request.Headers.ContainsKey("X-Forwarded-For") && !c.Request.Headers.ContainsKey("CF-Connecting-IP");
+bool CanAccelerate(HttpContext c)=>LocalTurns.Allowed(localTest,c);
 app.MapGet("/health",()=>Results.Ok(new{status="ok"}));
 app.MapGet("/api/campaign",async(HttpContext c, IGameStore db)=>Results.Ok(new{campaign=await db.Execute(g=>Rules.Observe(g,Team(c)),false),localTest=CanAccelerate(c)}));
 app.MapPut("/api/orders",async(HttpContext c,Submission body)=>Results.Ok(new{revision=await store.Execute(g=>
@@ -64,11 +61,7 @@ app.MapPost("/api/messages",async(HttpContext c,BoardPost body)=>Results.Ok(awai
 app.MapPost("/api/local/advance",async(HttpContext c,Advance body)=>
 {
     if(!CanAccelerate(c)) return Results.NotFound();
-    return Results.Ok(await store.Execute(g=>
-    {
-        if(g.Turn!=body.Turn) return new{advanced=false,turn=g.Turn};
-        g.Deadline=DateTimeOffset.UtcNow; var advanced=Rules.Resolve(g,DateTimeOffset.UtcNow); return new{advanced,turn=g.Turn};
-    }));
+    return Results.Ok(await store.Execute(g=>LocalTurns.Resolve(g,body.Turn,DateTimeOffset.UtcNow)));
 });
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapFallbackToFile("index.html");

@@ -7,14 +7,19 @@ let browser,checks=0;function check(value,name){assert.ok(value,name);checks++;c
 function campaign(team=0){return {turn:1,deadline:'2099-01-01T00:00:00Z',winner:null,team,name:team?'Ember fixture':'Aurora fixture',credits:60,revision:0,orders:[],reports:[],messages:[],stars:[0,1].map(id=>({id,name:id?'Lumen':'Hearth',x:20+id*20,y:40,known:true,visible:true,owner:team,collectors:1,ships:team?[0,8]:[8,0],scouts:[0,0],defense:0,fleets:null})),energy:2,goal:8,intelligence:[],reconRates:{distant:90},economyVersion:0,nextIncome:30,combatVersion:0};}
 try{
  await server.listen();browser=await chromium.launch({channel:'msedge',headless:true});
- const page=await browser.newPage();const states=[campaign(),campaign(1)],puts=[],reads=[],putTeams=[];let pending=[];let putMode='hold',readMode='normal';
+ const page=await browser.newPage();const states=[campaign(),campaign(1)],puts=[],reads=[],putTeams=[];let pending=[];let putMode='hold',readMode='normal',localCapability=false;const advances=[];let advanceMode='success';
  await page.route('**/api/**',async route=>{
   const request=route.request(),path=new URL(request.url()).pathname,team=request.headers().authorization?.includes('ember')?1:0;
   if(path==='/api/campaign'){
    reads.push(team);
-   if(readMode==='hold'){pending.push(()=>route.fulfill({json:{campaign:states[team],localTest:false}}));return;}
+   if(readMode==='hold'){pending.push(()=>route.fulfill({json:{campaign:states[team],localTest:localCapability}}));return;}
    if(readMode==='fail'){readMode='normal';await route.fulfill({status:503,json:{error:'Synthetic refresh failure'}});return;}
-   await route.fulfill({json:{campaign:states[team],localTest:false}});return;
+   await route.fulfill({json:{campaign:states[team],localTest:localCapability}});return;
+  }
+  if(path==='/api/local/advance'){
+   advances.push(request.postDataJSON());
+   if(advanceMode==='fail'){await route.fulfill({status:503,json:{error:'Synthetic turn uncertainty'}});return;}
+   pending.push(async()=>{const advanced=advanceMode!=='stale';if(advanced){states[team].turn++;states[team].orders=[];states[team].reports=['Synthetic resolved turn report'];}await route.fulfill({json:{advanced,turn:states[team].turn}});});return;
   }
   if(path==='/api/orders'){
    const body=request.postDataJSON();puts.push(body);putTeams.push(team);
@@ -78,5 +83,21 @@ try{
  await page.getByRole('button',{name:'Leave',exact:true}).click();readMode='fail';await page.getByLabel('Clan access key').fill('aurora');await page.getByRole('button',{name:'Enter command deck'}).click();await page.getByRole('alert').filter({hasText:'refresh failure'}).waitFor();
  check(await page.getByLabel('Clan access key').isEnabled()&&await page.getByRole('button',{name:'Enter command deck'}).isEnabled(),'Failed login unlocks credentials and action guard');
  await login('ember');check((await page.locator('.live').innerText()).includes('Ember fixture'),'Login failure permits another clan login without stale credentials');
+ // Run turn is a server-granted local capability; it never submits the draft.
+ check(await page.getByRole('button',{name:'Run turn',exact:true}).count()===0,'Normal campaign hides Run turn');
+ localCapability=true;await page.getByRole('button',{name:'Refresh clan orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Latest clan orders loaded'}).waitFor();
+ const run=()=>page.getByRole('button',{name:'Run turn',exact:true});
+ check(await run().isEnabled(),'Server-granted local capability exposes Run turn');
+ await add();check(await run().isDisabled(),'Uncommitted draft blocks Run turn without silently submitting');
+ await page.getByRole('button',{name:'Refresh clan orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Latest clan orders loaded'}).waitFor();
+ const putsBefore=puts.length,turnBefore=states[1].turn;
+ await run().evaluate(button=>{button.click();button.click();});await page.getByRole('button',{name:'Leave',exact:true}).focus();
+ check(advances.length===1&&advances[0].turn===turnBefore&&puts.length===putsBefore,'Repeated Run turn sends one expected-turn request and no order submission');
+ await flush();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
+ check(await page.getByText('Synthetic resolved turn report',{exact:true}).isVisible()&&await run().isEnabled(),'Successful Run turn refreshes reports and releases the control');
+ advanceMode='fail';await run().click();await page.getByRole('alert').filter({hasText:'Synthetic turn uncertainty'}).waitFor();
+ check(await run().isEnabled(),'Failed Run turn releases control for same-turn retry');
+ advanceMode='stale';await run().click();await page.getByRole('button',{name:'Leave',exact:true}).focus();await flush();await page.getByRole('status').filter({hasText:'Turn already resolved'}).waitFor();
+ check(advances.at(-1).turn===advances.at(-2).turn,'Uncertain retry keeps expected turn; stale response refreshes without claiming another advancement');
  console.log(`${checks} synthetic draft/session checks passed; no .NET or live API involved.`);
 }finally{if(browser)await browser.close();await server.close();}
