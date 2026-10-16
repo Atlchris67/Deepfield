@@ -49,3 +49,10 @@ This checkout is on feature/preview-run-turn. Local launchSettings key edits and
 Under Field reports, Run turn resolves all clans' committed orders immediately through the normal simultaneous resolver, then reloads the campaign and reports. Commit any draft first, or explicitly discard it with Refresh clan orders. Uncommitted drafts and pending submissions disable Run turn; the control never submits orders for you. The expected turn protects duplicate requests and races with the daily worker. An uncertain failure can be retried against the same displayed turn.
 
 The normal output build encountered DLLs locked by Visual Studio and Deepfield.Api. A compile-only build to temporary artifacts succeeded; no process was stopped and those temporary assemblies were not executed. Runtime verification remains pending. If Windows blocks loading the rebuilt preview, stop there rather than changing security or using another launch path.
+## Editing an unsubmitted maneuver
+
+Locally added draft rows offer Edit. The dialog prefills source, action, destination, hull, count and mission where relevant. Save replaces that row in place; it does not submit orders. Cancel, Escape, Close and browser Back leave the original row unchanged. Movement availability excludes the row being edited while retaining all other draft reservations. Changing source, hull or action recalculates validation, including budget, ownership, scout availability and construction limits.
+
+Server-loaded committed rows have no Edit action. Pending submissions disable editing. Save checks the latest turn and clan revision; a changed turn/revision requires cancelling and refreshing instead of applying an outdated edit. Refreshing or leaving the session invalidates pending editor responses. Local draft identity is never sent to the API.
+
+This is a frontend-only change. In the existing isolated preview, reload the page after preserving any work you intend to keep, add a new draft maneuver, then choose Edit beside it. Reloading discards unsubmitted browser state. No server restart, save migration or key change is required for this editor.
