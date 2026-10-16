@@ -18,3 +18,9 @@ Original family space strategy, managed by Nova. One persistent campaign, two cl
 
 ## Acceptance checks
 Rules and deterministic replay; AI legal orders; visibility isolation; deadline boundary; duplicate submission and mismatched retry; stale revisions; concurrent resolution; persisted restart / overdue behavior; private board/API isolation; production test-mode denial; build/typecheck and local browser smoke.
+
+## Isolated preview Run turn increment
+
+Expose Run turn when the server grants explicit local acceleration: Development plus IsolatedPreview or the existing LocalTest opt-in, loopback address/hostname and no forwarding headers. Retain authentication, transactional expected-turn checks and the normal resolver. Label the action as committed-orders-only; never submit a local draft implicitly. Preserve local launchSettings keys and .vs files without staging them.
+
+Stages: (1) checkpoint scope; (2) wire preview capability, clear UI semantics and regression coverage; (3) run safe frontend checks and compile-only backend validation, document any runtime block, publish a draft PR. Verify duplicate/scheduler attempts, normal-mode denial, refresh/report behavior and unsubmitted draft handling. Do not launch Deepfield binaries while the existing execution pause remains unresolved.
