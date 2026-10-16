@@ -24,3 +24,13 @@ Rules and deterministic replay; AI legal orders; visibility isolation; deadline 
 Expose Run turn when the server grants explicit local acceleration: Development plus IsolatedPreview or the existing LocalTest opt-in, loopback address/hostname and no forwarding headers. Retain authentication, transactional expected-turn checks and the normal resolver. Label the action as committed-orders-only; never submit a local draft implicitly. Preserve local launchSettings keys and .vs files without staging them.
 
 Stages: (1) checkpoint scope; (2) wire preview capability, clear UI semantics and regression coverage; (3) run safe frontend checks and compile-only backend validation, document any runtime block, publish a draft PR. Verify duplicate/scheduler attempts, normal-mode denial, refresh/report behavior and unsubmitted draft handling. Do not launch Deepfield binaries while the existing execution pause remains unresolved.
+
+## Local-only draft maneuver editing
+
+Add Edit for locally added, unsubmitted draft items only. Prefill a modal, replace the same item on Save, preserve its local identity/order, and leave it unchanged on Cancel/Escape/close. Exclude only the edited item from reservations and retain other draft orders for validation. Guard repeated saves, pending submissions, changed turn/revision and leaving the session. Server-loaded committed items are not editable. Preserve local launch settings/keys and Visual Studio files.
+
+Implement on a new local branch from PR10, add pure and actual-React interaction regressions, then run aggregate frontend tests/lint/build. Local commits only; no push, PR or publication is authorized for this increment.
+
+### Draft editing publication update
+
+Publication was subsequently explicitly approved. Publish the tested feature/edit-draft-maneuver branch and a draft PR based on PR10; retain the no-merge/no-live-restart constraints and preserve local secrets.
