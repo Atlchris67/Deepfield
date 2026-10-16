@@ -74,7 +74,7 @@ try{
  await page.getByLabel('Action at Hearth').selectOption('collector');await page.getByRole('button',{name:'+ Add to draft'}).click();
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  await page.getByLabel('Message',{exact:true}).fill('Coordinate collectors after the expedition.');await page.getByRole('button',{name:'Send to clan'}).click();await page.getByText('Coordinate collectors after the expedition.',{exact:true}).waitFor();
- await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await page.getByRole('button',{name:'Run turn'}).click();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  check((await state()).energy===2,'Browser commit and test turn update campaign');
  await page.screenshot({path:resolve(artifacts,'command-desktop.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(artifacts,'command-mobile.png'),fullPage:true});
@@ -96,18 +96,18 @@ try{
  await page.getByRole('button',{name:'Remove order 1',exact:true}).click();
  await page.getByLabel('Action at Hearth').selectOption('scoutbuild');await page.getByLabel('Ships',{exact:true}).fill('2');await page.getByRole('button',{name:'+ Add to draft'}).click();
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
- await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await page.getByRole('button',{name:'Run turn'}).click();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  check((await state()).stars[0].scouts[0]===2,'Browser builds dedicated 3-credit scouts');
  await page.getByLabel('Action at Hearth').selectOption('recon');await page.getByLabel('Destination').selectOption('6');await page.getByLabel('Recon mission').selectOption('deep');await page.getByRole('button',{name:'+ Add to draft'}).click();
  await page.route('**/api/orders',async route=>{await route.fetch();await route.abort('failed');},{times:1});
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('alert').waitFor();
  await page.getByRole('button',{name:'Retry submission',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  check((await state()).orders.length===1&&(await state()).orders[0].mission==='deep','Interrupted recon submission preserves mission and commits once');
- await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await page.getByRole('button',{name:'Run turn'}).click();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  await page.getByText('Exact at observation: 7 enemy combat ships',{exact:false}).waitFor();
  const observed=await state();const observedTurn=observed.intelligence[0].turn;
  check(observed.intelligence.length===1&&observed.intelligence[0].returned&&observed.stars[6].ships===null&&(await state(1)).intelligence.length===0,'Deep ISR is private historical intelligence, never live enemy vision');
- await page.getByRole('button',{name:'Resolve one test turn'}).click();await page.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await page.getByRole('button',{name:'Run turn'}).click();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  check((await state()).intelligence[0].turn===observedTurn&&await page.getByText('Last observed turn '+observedTurn,{exact:false}).count()===1,'Browser retains dated intelligence as turns age');
  await page.screenshot({path:resolve(artifacts,'scout-intelligence-mobile.png'),fullPage:true});
  await page.getByLabel('Call sign').fill('Private Aurora identity');
@@ -125,6 +125,13 @@ try{
  await stop(); await start({LocalTest:'false'});
  check((await api('local/advance',{method:'POST',body:{turn:4}})).status===404,'Acceleration disabled without explicit opt-in');
  await stop();
+ // Isolated preview grants local turn capability without the legacy test flag.
+ await start({IsolatedPreview:'true',LocalTest:'false',SavePath:'',ConnectionStrings__Deepfield:''});
+ const preview=await (await api('campaign')).json();check(preview.localTest===true,'Isolated preview enables local Run turn');
+ const previewTurn=preview.campaign.turn;
+ check((await (await api('local/advance',{method:'POST',body:{turn:previewTurn}})).json()).advanced===true,'Preview uses normal resolver');
+ check((await (await api('local/advance',{method:'POST',body:{turn:previewTurn}})).json()).advanced===false,'Preview repeated expected turn is a no-op');
+ await stop();
  // Production must refuse the local-only persistence fallback entirely.
  let rejected=false;try{await start({ASPNETCORE_ENVIRONMENT:'Production'});}catch(e){rejected=String(e).includes('PostgreSQL connection required');}
  check(rejected,'Production refuses development file store and test endpoint');
@@ -136,7 +143,7 @@ try{
  await economyPage.getByLabel('Action at Hearth').selectOption('defense');await economyPage.getByRole('button',{name:'+ Add to draft'}).click();
  await economyPage.getByLabel('Action at Hearth').selectOption('collector');await economyPage.getByRole('button',{name:'+ Add to draft'}).click();
  await economyPage.getByRole('button',{name:'Commit orders',exact:true}).click();await economyPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
- await economyPage.getByRole('button',{name:'Resolve one test turn'}).click();await economyPage.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await economyPage.getByRole('button',{name:'Run turn'}).click();await economyPage.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  const economicState=await state();check(economicState.stars[0].defense===2&&economicState.credits===42&&economicState.nextIncome===20,'Browser builds fixed defenses and collector with correct income/cost');
  check((await state(1)).stars[0].defense===null,'Enemy fixed defenses remain hidden through API');
  await economyPage.screenshot({path:resolve(artifacts,'economy-defense-desktop.png'),fullPage:true});
@@ -185,13 +192,13 @@ try{
  check(await fleetPage.locator('.queue li').count()===1,'Repeated Add clicks create one expedition');await fleetPage.getByRole('button',{name:'Remove order 1',exact:true}).click();
  await fleetPage.getByLabel('Action at Hearth').selectOption('build');await fleetPage.getByLabel('Hull class').selectOption('cruiser');await fleetPage.getByLabel('Ships',{exact:true}).fill('2');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();
  await fleetPage.getByLabel('Action at Hearth').selectOption('scoutbuild');await fleetPage.getByLabel('Ships',{exact:true}).fill('1');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();
- await fleetPage.getByRole('button',{name:'Commit orders',exact:true}).click();await fleetPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();await fleetPage.getByRole('button',{name:'Resolve one test turn'}).click();await fleetPage.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await fleetPage.getByRole('button',{name:'Commit orders',exact:true}).click();await fleetPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();await fleetPage.getByRole('button',{name:'Run turn'}).click();await fleetPage.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  check((await state()).stars[0].fleets[0][2]===2&&(await state()).credits===45,'Hull editor builds cruisers at correct cost alongside scout');
  await fleetPage.getByLabel('Action at Hearth').selectOption('move');await expedition(fleetPage,{Interceptor:4,Cruiser:2});
  await fleetPage.getByLabel('Action at Hearth').selectOption('recon');await fleetPage.getByLabel('Destination').selectOption('1');await fleetPage.getByLabel('Recon mission').selectOption('deep');await fleetPage.getByRole('button',{name:'+ Add to draft'}).click();
  await fleetPage.route('**/api/orders',async route=>{await route.fetch();await route.abort('failed');},{times:1});await fleetPage.getByRole('button',{name:'Commit orders',exact:true}).click();await fleetPage.getByRole('alert').waitFor();await fleetPage.getByRole('button',{name:'Retry submission',exact:true}).click();await fleetPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  check((await state()).orders.length===3&&(await state()).orders[1].hull==='cruiser','Interrupted mixed-fleet order retains selected hulls and one scout mission');
- await fleetPage.getByRole('button',{name:'Resolve one test turn'}).click();await fleetPage.getByRole('status').filter({hasText:'One test turn resolved.'}).waitFor();
+ await fleetPage.getByRole('button',{name:'Run turn'}).click();await fleetPage.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  const result=await state();check(result.stars[1].owner===0&&result.stars[1].fleets[0][2]===2&&result.stars[1].fleets[1].every(n=>n===0),'Mixed fleet counters bombers and establishes colony with interceptor escorts');
  check(result.intelligence.find(i=>i.mission==='deep').enemyComposition[3]===4&&result.intelligence.find(i=>i.mission==='battle').enemyComposition[3]===4,'Deep and surviving battle reports retain actual opening composition');
  check((await state(1)).intelligence.find(i=>i.mission==='battle').enemyComposition===null,'Destroyed rival fleet receives no exact survivor/composition report');
