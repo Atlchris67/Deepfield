@@ -131,3 +131,13 @@ Windows Application Control still blocks the Deepfield execution path. The comma
 - Optional IDE validation remains unperformed: no compatible Visual Studio IDE was found. If one is installed separately and execution is approved, verify solution loading/build and the isolated-preview profile on port 5098, including fresh temporary storage on each launch. See VISUAL_STUDIO.md. This is not required for CLI testing.
 
 No DNS, tunnel, deployment, service, credential, signing or Windows policy changes are part of this backlog execution authorization. The optional signing workflow is a separate draft branch and is not required or selected by this update.
+
+## Isolated preview Run turn - 2026-10-16
+
+23 actual-React/synthetic-API Edge checks pass (14 prior draft/session checks plus nine Run turn cases). New coverage: capability hidden for normal campaigns, local visibility, unsent-draft lock, repeated click single request with expected turn and no implicit order PUT, refreshed reports, failed-action unlock, stale retry, ambiguous order-submission lock and completed-campaign lock. Frontend lint/build and smoke-script syntax checks pass. Inspected ignored screenshot test-results/run-turn-preview.png.
+
+Added 17 C# capability/persistence checks for Development/explicit opt-in, local host/address and proxy enforcement, scheduler-first/button-first transactions, concurrent duplicates, reopening the save and completed campaigns. Added three API smoke assertions for isolated preview capability and repeated expected-turn requests, and updated button labels in existing integration tests. These backend/runtime tests are authored and compiled but UNRUN while Deepfield execution remains paused; no API instance was launched or restarted by this work.
+
+SDK 10.0.402 compiled all four projects with zero warnings/errors (10.06 seconds) using `dotnet build Deepfield.sln -m:1 --disable-build-servers --artifacts-path C:\Users\chris\AppData\Local\Temp\deepfield-run-turn-compile`. Normal output compilation initially overlapped frontend asset replacement, then failed on DLLs locked by Microsoft Visual Studio (26720) and Deepfield.Api (35976). Separate compile artifacts avoided modifying locked output; they were never executed. During the first invocation the newly installed SDK's first-run setup reported installing an ASP.NET development certificate. No certificate trust command, security-policy change or manual certificate installation was performed.
+
+The user's modified launchSettings.json and untracked .vs directory remain outside commits. Keys were neither printed nor staged. Existing game saves and the original checkout were not modified. Loading instructions and disposable-preview restart behavior are in VISUAL_STUDIO.md.

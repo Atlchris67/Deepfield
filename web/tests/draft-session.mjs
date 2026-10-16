@@ -99,5 +99,10 @@ try{
  check(await run().isEnabled(),'Failed Run turn releases control for same-turn retry');
  advanceMode='stale';await run().click();await page.getByRole('button',{name:'Leave',exact:true}).focus();await flush();await page.getByRole('status').filter({hasText:'Turn already resolved'}).waitFor();
  check(advances.at(-1).turn===advances.at(-2).turn,'Uncertain retry keeps expected turn; stale response refreshes without claiming another advancement');
+ await page.screenshot({path:'../test-results/run-turn-preview.png',fullPage:true});
+ await add();putMode='network';await commit().click();await page.getByRole('alert').waitFor();
+ check(await run().isDisabled(),'Ambiguous order submission blocks Run turn until resolved');
+ states[1].winner=1;await page.getByRole('button',{name:'Refresh clan orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Latest clan orders loaded'}).waitFor();
+ check(await run().isDisabled(),'Completed campaign disables Run turn');
  console.log(`${checks} synthetic draft/session checks passed; no .NET or live API involved.`);
 }finally{if(browser)await browser.close();await server.close();}
