@@ -56,6 +56,10 @@ try{
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base);await page.getByLabel('Clan access key').fill(keys[0]);await page.getByRole('button',{name:'Enter command deck'}).click();
  await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ const planet=page.getByRole('img',{name:'Rotatable model of Hearth'});await planet.waitFor();
+ const planetBox=await planet.boundingBox();
+ check(planetBox&&Math.round(planetBox.width)===250&&Math.round(planetBox.height)===250,'Selected planet renders a 250px rotatable preview');
+ await planet.focus();await planet.press('ArrowRight');
  await page.getByLabel('Action at Hearth').selectOption('collector');await page.getByRole('button',{name:'+ Add to draft'}).click();
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  await page.getByLabel('Message',{exact:true}).fill('Coordinate collectors after the expedition.');await page.getByRole('button',{name:'Send to clan'}).click();await page.getByText('Coordinate collectors after the expedition.',{exact:true}).waitFor();
@@ -97,3 +101,4 @@ try{
  check(rejected,'Production refuses development file store and test endpoint');
  console.log(`${count} API/browser checks passed; screenshots in ${artifacts}`);
 }finally{if(browser)await browser.close();await stop();}
+
