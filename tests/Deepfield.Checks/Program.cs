@@ -4,3 +4,4 @@ EconomyChecks.Run();
 await TypedFleetChecks.Run();
 PreviewStorageChecks.Run();
 await LocalTurnChecks.Run();
+PlanetChecks.Run();
