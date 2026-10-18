@@ -12,6 +12,27 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- F5 must not silently reuse a frontend from an older feature branch. -->
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <BuildDeepfieldFrontend Condition="'$(BuildDeepfieldFrontend)' == ''">$(BuildingInsideVisualStudio)</BuildDeepfieldFrontend>
   </PropertyGroup>
+
+  <Target Name="BuildCommandDeck" BeforeTargets="PrepareForBuild"
+          Condition="'$(BuildDeepfieldFrontend)' == 'true' and '$(DesignTimeBuild)' != 'true'">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/../../web/node_modules/.bin/vite.cmd')"
+           Text="Deepfield frontend dependencies are missing. From the repository root run npm.cmd ci --prefix web, then build again." />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)/../../web"
+          Command="npm.cmd run build -- --outDir &quot;$(MSBuildProjectDirectory)/wwwroot&quot;" />
+    <!-- Refresh evaluated content items after Vite replaces its hashed bundles. -->
+    <ItemGroup>
+      <Content Remove="wwwroot/**" />
+      <_DeepfieldFrontend Include="$(MSBuildProjectDirectory)/wwwroot/**/*" />
+      <Content Include="@(_DeepfieldFrontend)">
+        <Link>wwwroot/%(_DeepfieldFrontend.RecursiveDir)%(_DeepfieldFrontend.Filename)%(_DeepfieldFrontend.Extension)</Link>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+  </Target>
 
 </Project>

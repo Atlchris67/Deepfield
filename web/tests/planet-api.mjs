@@ -7,14 +7,16 @@ import {resolve,join} from 'node:path';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 const root=resolve('..'),content=await mkdtemp(join(tmpdir(),'deepfield-planet-api-'));
+const builtAssets=process.env.DEEPFIELD_TEST_BUILT_ASSETS==='true';
+const webroot=resolve(root,builtAssets?'test-results/vs-project/Deepfield.Api/wwwroot':'test-results/planet-web');
 const manifest=join(content,'isolated-static-assets.json');
-await writeFile(manifest,JSON.stringify({ContentRoots:[resolve(root,'test-results/planet-web')],Root:{Children:{},Asset:null,Patterns:[{ContentRootIndex:0,Pattern:'**',Depth:0}]}}));
+await writeFile(manifest,JSON.stringify({ContentRoots:[webroot],Root:{Children:{},Asset:null,Patterns:[{ContentRootIndex:0,Pattern:'**',Depth:0}]}}));
 const keys=[randomBytes(24).toString('hex'),randomBytes(24).toString('hex')];
 const env={...process.env};for(const name of Object.keys(env))if(/^(SavePath|ConnectionStrings__Deepfield|DEEPFIELD_TEST_POSTGRES|ASPNETCORE_CONTENTROOT|ASPNETCORE_WEBROOT)$/i.test(name))delete env[name];
 Object.assign(env,{ASPNETCORE_ENVIRONMENT:'Development',ASPNETCORE_URLS:'http://127.0.0.1:0',IsolatedPreview:'true',Teams__0__Key:keys[0],Teams__1__Key:keys[1],EmpireAi:'false',EconomyVersion:'1',CombatVersion:'1'});
 let processHandle,browser,checks=0,logs='';const check=(ok,name)=>{assert.ok(ok,name);checks++;console.log('PASS '+name);};
 try{
- processHandle=spawn('dotnet',[resolve(root,'test-results/planet-build/bin/Deepfield.Api/debug/Deepfield.Api.dll'),'--contentRoot',content,'--staticWebAssets',manifest,'--webroot',resolve(root,'test-results/planet-web')],{cwd:content,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
+ processHandle=spawn('dotnet',[resolve(root,builtAssets?'test-results/vs-build/bin/Deepfield.Api/debug/Deepfield.Api.dll':'test-results/planet-build/bin/Deepfield.Api/debug/Deepfield.Api.dll'),'--contentRoot',content,...(builtAssets?[]:['--staticWebAssets',manifest]),'--webroot',webroot],{cwd:content,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
  processHandle.stdout.on('data',b=>logs+=b);processHandle.stderr.on('data',b=>logs+=b);
  let base;
  for(let i=0;i<100;i++){if(processHandle.exitCode!==null)throw Error('Disposable API failed: '+logs);base=logs.match(/Now listening on: (http:\/\/127\.0\.0\.1:\d+)/)?.[1];if(base)break;await new Promise(r=>setTimeout(r,100));}
@@ -26,6 +28,9 @@ try{
  check(b.stars[11].statistics.knowledge==='current'&&b.stars[0].statistics.fleets.length===0,'API derives projection from authenticated clan');
  browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base);await page.getByLabel('Clan access key').fill(keys[0]);await page.getByRole('button',{name:'Enter command deck'}).click();
+ await page.getByRole('button',{name:'View planet statistics'}).waitFor();
+ check(await page.locator('.brief').getByRole('button',{name:'View planet statistics'}).isVisible(),'Planet CTA is visible beside the selected system summary');
+ await page.screenshot({path:resolve(root,'test-results/planet-command-deck.png'),fullPage:true});
  await page.getByRole('button',{name:'View planet statistics'}).click();let dialog=page.getByRole('dialog');await dialog.waitFor();
  check((await dialog.innerText()).includes('Hearth')&&(await dialog.innerText()).includes('18 credits / turn'),'Actual command deck opens own colony dossier');
  await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});

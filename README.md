@@ -93,6 +93,10 @@ Startup runs in the **foreground**. The terminal stays busy showing logs; that i
 
 ### Visual Studio startup and keys
 
+Visual Studio builds now also run the React/TypeScript frontend build before compiling the API. This requires the existing Node installation and `web/node_modules`; if dependencies are missing, run `npm.cmd ci --prefix web` once from this checkout. A frontend error stops the build. CLI builds retain the explicit npm build step above.
+
+If you only see the old Hearth/collectors summary and no **View planet statistics** button, your browser is receiving an older frontend. When ready to replace your preview, stop its Visual Studio session, reload the project if prompted, choose **Build > Build Solution**, then start **Deepfield isolated preview** again. In the browser at port 5098, refresh and select a system; **View planet statistics** appears beside its name, above the collectors summary. A browser refresh alone cannot update old files on the server. Restarting this isolated profile creates a fresh disposable campaign as described above.
+
 Open `Deepfield.sln`, set `Deepfield.Api` as the startup project, and select **Deepfield isolated preview**. That profile uses **http://127.0.0.1:5098**, Development and isolated preview storage. It does not automatically open a browser. Each new launch creates a fresh disposable campaign; stop the IDE's debugging session to stop that server.
 
 Visual Studio launches with the selected profile's environment settings. **Keys supplied in your local `launchSettings.json` profile override inherited keys**; enter those effective values at clan login. Preserve your existing local keys and keep them out of commits. If the profile does not supply keys, Visual Studio must inherit both from the environment in which it starts. Assigning `$env:Teams__0__Key` and `$env:Teams__1__Key` in a new PowerShell window does not update an already-running Visual Studio instance. The PowerShell examples above deliberately use `--no-launch-profile`, so they use that shell's keys rather than the IDE profile's values.
