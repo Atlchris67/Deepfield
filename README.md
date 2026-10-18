@@ -38,6 +38,8 @@ The launcher is foreground-only, binds loopback, disables launch profiles, and u
 
 Topology and coordinates are public; unknown star names and current intelligence are filtered. “Charted” never means “safe.” The Type III goal is intentionally a compact gameplay abstraction, not a scientific scale simulation.
 
+Selecting a charted system also shows a deterministic 250 × 250 procedural planet. Drag it, swipe it or focus it and use the left/right arrow keys to rotate. Unknown systems intentionally withhold their surface until they are charted.
+
 ## Storage and turn safety
 
 - Production persistence is PostgreSQL through `ConnectionStrings__Deepfield`. The API creates a single `deepfield_campaign` table and one JSONB aggregate row. Configure an already-provisioned database yourself; this repository does not provision credentials, accounts or services.
@@ -68,6 +70,7 @@ The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also 
 - `src/Deepfield.Engine`: pure state, visibility and rules; no storage or web dependencies.
 - `src/Deepfield.Api`: team-key boundary, transaction stores, background daily worker and static UI hosting.
 - `web`: React/TypeScript command deck and browser smoke harness.
+- `web/src/vendor`: vendored Three.js ES module and its MIT license; see the included attribution notes.
 - `tests/Deepfield.Checks`: deterministic rule and persistence checks.
 - `docs/PLAN.md`: scope and invariants; `docs/VERIFICATION.md`: actual evidence and limitations.
 
@@ -76,3 +79,4 @@ The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also 
 PostgreSQL integration needs execution against an available disposable server. Before public hosting: individual users/invitations, membership and key rotation, rate limits, operational backup/recovery, and explicit proxy/HTTPS/access configuration. No DNS, Cloudflare Tunnel, firewall, external accounts, production credentials or persistent services have been configured. Additional campaigns, richer ship designs, diplomacy, balance tuning and accessibility testing are follow-up work. Federation/Empire use original names and styling, with no franchise assets.
 
 The initially empty repository has no separate PR base. The feature branch can be published, but creating `main` from an agreed baseline is a maintainer decision before a draft PR can be opened. No automatic merge is performed.
+
