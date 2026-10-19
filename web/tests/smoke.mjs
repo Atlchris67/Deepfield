@@ -34,6 +34,12 @@ try{
  await start();
  check((await fetch(base+'/api/campaign')).status===401,'Unauthenticated campaign denied');
  check((await state()).stars[11].ships===null,'API omits hidden fleet data');
+ const previewRequest={seed:42,systemCount:24,width:1000,height:700,minimumSeparation:45,nearestNeighborLinks:2,playerCount:2};
+ const previewResponse=await api('local/star-map/preview',{method:'POST',body:previewRequest});const mapPreview=await previewResponse.json();
+ const replayPreview=await (await api('local/star-map/preview',{method:'POST',body:previewRequest})).json();
+ check(previewResponse.status===200&&mapPreview.systems.length===24&&mapPreview.homeworlds.length===2&&JSON.stringify(mapPreview)===JSON.stringify(replayPreview),'Local host preview returns an exact deterministic map replay');
+ const campaignBeforePreview=JSON.stringify(await state());
+ check((await api('local/star-map/preview',{method:'POST',body:{...previewRequest,systemCount:1}})).status===409&&JSON.stringify(await state())===campaignBeforePreview,'Invalid preview fails without mutating the campaign');
  check((await api('local/advance',{method:'POST',body:{turn:1},headers:{'X-Forwarded-For':'8.8.8.8'}})).status===404,'Proxied acceleration denied');
  const publicHostStatus=await new Promise((done,fail)=>{const req=httpRequest(base+'/api/local/advance',{method:'POST',headers:{Host:'starzdeepfield.com',Authorization:'Bearer '+keys[0],'Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>done(res.statusCode));});req.on('error',fail);req.end(JSON.stringify({turn:1}));});
  check(publicHostStatus===404,'Public hostname acceleration denied');
@@ -124,10 +130,12 @@ try{
  await browser.close();browser=null;
  await stop(); await start({LocalTest:'false'});
  check((await api('local/advance',{method:'POST',body:{turn:4}})).status===404,'Acceleration disabled without explicit opt-in');
+ check((await api('local/star-map/preview',{method:'POST',body:previewRequest})).status===404,'Star-map setup is disabled without local preview permission');
  await stop();
  // Isolated preview grants local turn capability without the legacy test flag.
  await start({IsolatedPreview:'true',LocalTest:'false',SavePath:'',ConnectionStrings__Deepfield:''});
  const preview=await (await api('campaign')).json();check(preview.localTest===true,'Isolated preview enables local Run turn');
+ check((await api('local/star-map/preview',{method:'POST',body:previewRequest})).status===200,'Isolated preview enables the host map lab');
  const previewTurn=preview.campaign.turn;
  check((await (await api('local/advance',{method:'POST',body:{turn:previewTurn}})).json()).advanced===true,'Preview uses normal resolver');
  check((await (await api('local/advance',{method:'POST',body:{turn:previewTurn}})).json()).advanced===false,'Preview repeated expected turn is a no-op');
