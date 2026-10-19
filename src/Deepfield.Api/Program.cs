@@ -43,6 +43,12 @@ app.Use(async(ctx,next)=>
 });
 int Team(HttpContext c)=>(int)c.Items["team"]!;
 bool CanAccelerate(HttpContext c)=>LocalTurns.Allowed(localTest,c);
+IResult PreviewStarMap(HttpContext c,StarMapPreviewRequest body)
+{
+    if(!CanAccelerate(c)) return Results.NotFound();
+    var settings=new StarMapSettings(body.SystemCount,body.Width,body.Height,body.MinimumSeparation,body.NearestNeighborLinks,body.PlayerCount);
+    return Results.Ok(StarMapGenerator.Generate(body.Seed,settings));
+}
 app.MapGet("/health",()=>Results.Ok(new{status="ok"}));
 app.MapGet("/api/campaign",async(HttpContext c, IGameStore db)=>Results.Ok(new{campaign=await db.Execute(g=>Rules.Observe(g,Team(c)),false),localTest=CanAccelerate(c)}));
 app.MapPut("/api/orders",async(HttpContext c,Submission body)=>Results.Ok(new{revision=await store.Execute(g=>
@@ -63,8 +69,10 @@ app.MapPost("/api/local/advance",async(HttpContext c,Advance body)=>
     if(!CanAccelerate(c)) return Results.NotFound();
     return Results.Ok(await store.Execute(g=>LocalTurns.Resolve(g,body.Turn,DateTimeOffset.UtcNow)));
 });
+app.MapPost("/api/local/star-map/preview",PreviewStarMap);
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapFallbackToFile("index.html");
 app.Run();
 public record BoardPost(string Id,string Author,string Text);
 public record Advance(int Turn);
+public record StarMapPreviewRequest(int Seed,int SystemCount,int Width,int Height,int MinimumSeparation,int NearestNeighborLinks,int PlayerCount);
