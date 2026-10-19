@@ -18,10 +18,12 @@
 }
 
 .planetViewport {
+  position: relative;
   width: 250px;
   height: 250px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 50%;
   cursor: grab;
   touch-action: none;
@@ -33,9 +35,15 @@
 }
 
 .planetViewport canvas {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 250px;
   height: 250px;
+}
+
+.planetViewport.previewFallback canvas {
+  display: none;
 }
 
 .planetPreview figcaption {
@@ -47,12 +55,18 @@
 }
 
 .planetFallback {
+  position: absolute;
+  z-index: 0;
   width: 158px;
   height: 158px;
   border: 1px solid #5c8984;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 31%, #719d88, #315c55 44%, #14252b 72%);
-  box-shadow: inset -24px -16px 35px #07101599, 0 0 25px #6fd7bd22;
+  background:
+    radial-gradient(circle at 37% 36%, #92c6a7 0 4%, transparent 5%),
+    radial-gradient(ellipse at 58% 43%, #769b72 0 10%, transparent 11%),
+    radial-gradient(ellipse at 39% 66%, #648b67 0 13%, transparent 14%),
+    radial-gradient(circle at 34% 31%, #719d88, #315c55 44%, #14252b 72%);
+  box-shadow: inset -24px -16px 35px #07101599, 0 0 25px #6fd7bd44;
 }
 
 .planetUnavailable {

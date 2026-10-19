@@ -30,6 +30,8 @@ try{
  await page.goto(base);await page.getByLabel('Clan access key').fill(keys[0]);await page.getByRole('button',{name:'Enter command deck'}).click();
  const preview=page.getByRole('img',{name:'Rotatable model of Hearth'});await preview.waitFor();const previewBox=await preview.boundingBox();
  check(previewBox&&Math.round(previewBox.width)===250&&Math.round(previewBox.height)===250,'Selected system renders a 250px rotatable planet preview');
+ const fallback=preview.locator('.planetFallback');const fallbackBox=await fallback.boundingBox();
+ check(fallbackBox&&Math.round(fallbackBox.width)>=158&&Math.round(fallbackBox.height)>=158,'Planet preview always has visible rendered pixels, including without WebGL');
  await preview.focus();await preview.press('ArrowRight');
  await page.getByRole('button',{name:'View planet statistics'}).waitFor();
  check(await page.locator('.brief').getByRole('button',{name:'View planet statistics'}).isVisible(),'Planet CTA is visible beside the selected system summary');

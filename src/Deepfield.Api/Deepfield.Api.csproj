@@ -14,15 +14,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- F5 must not silently reuse a frontend from an older feature branch. -->
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-    <BuildDeepfieldFrontend Condition="'$(BuildDeepfieldFrontend)' == ''">$(BuildingInsideVisualStudio)</BuildDeepfieldFrontend>
+    <BuildDeepfieldFrontend Condition="'$(BuildDeepfieldFrontend)' == ''">true</BuildDeepfieldFrontend>
+    <NpmCommand Condition="'$(OS)' == 'Windows_NT'">npm.cmd</NpmCommand>
+    <NpmCommand Condition="'$(NpmCommand)' == ''">npm</NpmCommand>
   </PropertyGroup>
 
   <Target Name="BuildCommandDeck" BeforeTargets="PrepareForBuild"
           Condition="'$(BuildDeepfieldFrontend)' == 'true' and '$(DesignTimeBuild)' != 'true'">
-    <Error Condition="!Exists('$(MSBuildProjectDirectory)/../../web/node_modules/.bin/vite.cmd')"
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/../../web/node_modules/vite/bin/vite.js')"
            Text="Deepfield frontend dependencies are missing. From the repository root run npm.cmd ci --prefix web, then build again." />
     <Exec WorkingDirectory="$(MSBuildProjectDirectory)/../../web"
-          Command="npm.cmd run build -- --outDir &quot;$(MSBuildProjectDirectory)/wwwroot&quot;" />
+          Command="$(NpmCommand) run build -- --outDir &quot;$(MSBuildProjectDirectory)/wwwroot&quot;" />
     <!-- Refresh evaluated content items after Vite replaces its hashed bundles. -->
     <ItemGroup>
       <Content Remove="wwwroot/**" />

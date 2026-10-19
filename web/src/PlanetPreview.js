@@ -77,7 +77,7 @@ export default function PlanetPreview({starId,name}){
     return()=>{cancelAnimationFrame(frame);observer.disconnect();mount.removeEventListener('pointerdown',down);mount.removeEventListener('pointermove',move);mount.removeEventListener('pointerup',up);mount.removeEventListener('pointercancel',up);mount.removeEventListener('keydown',keydown);geometry.dispose();atmosphereGeometry.dispose();material.dispose();atmosphereMaterial.dispose();texture.dispose();renderer.dispose();renderer.domElement.remove();};
   },[starId]);
   return createElement('figure',{className:'planetPreview'},
-    createElement('div',{ref:mountRef,className:'planetViewport',role:'img',tabIndex:0,'aria-label':`Rotatable model of ${name}`,'aria-describedby':hintId},
-      !available&&createElement('div',{className:'planetFallback','aria-hidden':'true'})),
+    createElement('div',{ref:mountRef,className:'planetViewport'+(!available?' previewFallback':''),role:'img',tabIndex:0,'aria-label':`Rotatable model of ${name}`,'aria-describedby':hintId},
+      createElement('div',{className:'planetFallback','aria-hidden':'true'})),
     createElement('figcaption',{id:hintId},available?'Drag or use arrow keys to rotate':'3D preview unavailable'));
 }
