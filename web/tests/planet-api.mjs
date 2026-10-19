@@ -28,6 +28,9 @@ try{
  check(b.stars[11].statistics.knowledge==='current'&&b.stars[0].statistics.fleets.length===0,'API derives projection from authenticated clan');
  browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base);await page.getByLabel('Clan access key').fill(keys[0]);await page.getByRole('button',{name:'Enter command deck'}).click();
+ const preview=page.getByRole('img',{name:'Rotatable model of Hearth'});await preview.waitFor();const previewBox=await preview.boundingBox();
+ check(previewBox&&Math.round(previewBox.width)===250&&Math.round(previewBox.height)===250,'Selected system renders a 250px rotatable planet preview');
+ await preview.focus();await preview.press('ArrowRight');
  await page.getByRole('button',{name:'View planet statistics'}).waitFor();
  check(await page.locator('.brief').getByRole('button',{name:'View planet statistics'}).isVisible(),'Planet CTA is visible beside the selected system summary');
  await page.screenshot({path:resolve(root,'test-results/planet-command-deck.png'),fullPage:true});
