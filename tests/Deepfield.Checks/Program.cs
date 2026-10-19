@@ -5,3 +5,4 @@ await TypedFleetChecks.Run();
 PreviewStorageChecks.Run();
 await LocalTurnChecks.Run();
 PlanetChecks.Run();
+StarMapChecks.Run();
