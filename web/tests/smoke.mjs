@@ -14,6 +14,7 @@ const base='http://127.0.0.1:5097';
 let processHandle,browser;
 let count=0;
 function check(value,name){assert.ok(value,name);count++;console.log('PASS '+name);}
+async function openComposer(page){const details=page.locator('.orderComposer');if(!(await details.getAttribute('open')))await details.locator('summary').click();}
 async function start(extra={}){
  processHandle=spawn('dotnet',[resolve(root,'src/Deepfield.Api/bin/Debug/net10.0/Deepfield.Api.dll')],{cwd:resolve(root,'src/Deepfield.Api'),windowsHide:true,env:{...process.env,ASPNETCORE_ENVIRONMENT:'Development',ASPNETCORE_URLS:base,Teams__0__Key:keys[0],Teams__1__Key:keys[1],SavePath:save,EmpireAi:'false',LocalTest:'true',...extra},stdio:['ignore','pipe','pipe']});
  let logs='';processHandle.stdout.on('data',b=>logs+=b);processHandle.stderr.on('data',b=>logs+=b);
@@ -34,6 +35,12 @@ try{
  await start();
  check((await fetch(base+'/api/campaign')).status===401,'Unauthenticated campaign denied');
  check((await state()).stars[11].ships===null,'API omits hidden fleet data');
+ const previewRequest={seed:42,systemCount:24,width:1000,height:700,minimumSeparation:45,nearestNeighborLinks:2,playerCount:2};
+ const previewResponse=await api('local/star-map/preview',{method:'POST',body:previewRequest});const mapPreview=await previewResponse.json();
+ const replayPreview=await (await api('local/star-map/preview',{method:'POST',body:previewRequest})).json();
+ check(previewResponse.status===200&&mapPreview.systems.length===24&&mapPreview.homeworlds.length===2&&JSON.stringify(mapPreview)===JSON.stringify(replayPreview),'Local host preview returns an exact deterministic map replay');
+ const campaignBeforePreview=JSON.stringify(await state());
+ check((await api('local/star-map/preview',{method:'POST',body:{...previewRequest,systemCount:1}})).status===409&&JSON.stringify(await state())===campaignBeforePreview,'Invalid preview fails without mutating the campaign');
  check((await api('local/advance',{method:'POST',body:{turn:1},headers:{'X-Forwarded-For':'8.8.8.8'}})).status===404,'Proxied acceleration denied');
  const publicHostStatus=await new Promise((done,fail)=>{const req=httpRequest(base+'/api/local/advance',{method:'POST',headers:{Host:'starzdeepfield.com',Authorization:'Bearer '+keys[0],'Content-Type':'application/json'}},res=>{res.resume();res.on('end',()=>done(res.statusCode));});req.on('error',fail);req.end(JSON.stringify({turn:1}));});
  check(publicHostStatus===404,'Public hostname acceleration denied');
@@ -71,6 +78,7 @@ try{
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base);await page.getByLabel('Clan access key').fill(keys[0]);await page.getByRole('button',{name:'Enter command deck'}).click();
  await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await openComposer(page);await page.getByRole('tab',{name:'Clan channel'}).click();
  await page.getByLabel('Action at Hearth').selectOption('collector');await page.getByRole('button',{name:'+ Add to draft'}).click();
  await page.getByRole('button',{name:'Commit orders',exact:true}).click();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  await page.getByLabel('Message',{exact:true}).fill('Coordinate collectors after the expedition.');await page.getByRole('button',{name:'Send to clan'}).click();await page.getByText('Coordinate collectors after the expedition.',{exact:true}).waitFor();
@@ -117,17 +125,20 @@ try{
  check(await page.getByLabel('Clan access key').inputValue()==='', 'Leave clears the previous clan key');
  await page.getByLabel('Clan access key').fill(keys[1]);await page.getByRole('button',{name:'Enter command deck'}).click();
  await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await openComposer(page);await page.getByRole('tab',{name:'Clan channel'}).click();
  check(await page.getByLabel('Message',{exact:true}).inputValue()===''&&await page.getByLabel('Call sign').inputValue()==='Commander','Switching clans clears private unsent message and author');
- check(await page.getByRole('status').innerText()===''&&await page.locator('.queue li').count()===0&&await page.getByRole('alert').count()===0,'Switching clans clears orders, notices and errors');
+ check(await page.locator('.notice').innerText()===''&&await page.locator('.queue li').count()===0&&await page.getByRole('alert').count()===0,'Switching clans clears orders, notices and errors');
  check(await page.locator('.intelReport').count()===0,'Switching clans clears previous clan reconnaissance reports');
  check(await page.getByRole('button',{name:'Select expedition fleet',exact:true}).count()===1&&await page.getByRole('dialog').count()===0,'Switching clans resets order editor state');
  await browser.close();browser=null;
  await stop(); await start({LocalTest:'false'});
  check((await api('local/advance',{method:'POST',body:{turn:4}})).status===404,'Acceleration disabled without explicit opt-in');
+ check((await api('local/star-map/preview',{method:'POST',body:previewRequest})).status===404,'Star-map setup is disabled without local preview permission');
  await stop();
  // Isolated preview grants local turn capability without the legacy test flag.
  await start({IsolatedPreview:'true',LocalTest:'false',SavePath:'',ConnectionStrings__Deepfield:''});
  const preview=await (await api('campaign')).json();check(preview.localTest===true,'Isolated preview enables local Run turn');
+ check((await api('local/star-map/preview',{method:'POST',body:previewRequest})).status===200,'Isolated preview enables the host map lab');
  const previewTurn=preview.campaign.turn;
  check((await (await api('local/advance',{method:'POST',body:{turn:previewTurn}})).json()).advanced===true,'Preview uses normal resolver');
  check((await (await api('local/advance',{method:'POST',body:{turn:previewTurn}})).json()).advanced===false,'Preview repeated expected turn is a no-op');
@@ -140,6 +151,7 @@ try{
  browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL??'msedge',headless:true});
  const economyPage=await browser.newPage({viewport:{width:1440,height:1100}});await economyPage.goto(base);
  await economyPage.getByLabel('Clan access key').fill(keys[0]);await economyPage.getByRole('button',{name:'Enter command deck'}).click();await economyPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await openComposer(economyPage);
  await economyPage.getByLabel('Action at Hearth').selectOption('defense');await economyPage.getByRole('button',{name:'+ Add to draft'}).click();
  await economyPage.getByLabel('Action at Hearth').selectOption('collector');await economyPage.getByRole('button',{name:'+ Add to draft'}).click();
  await economyPage.getByRole('button',{name:'Commit orders',exact:true}).click();await economyPage.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
@@ -153,6 +165,7 @@ try{
  browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL??'msedge',headless:true});
  const fleetPage=await browser.newPage({viewport:{width:1440,height:1100}});const fleetErrors=[];fleetPage.on('pageerror',error=>fleetErrors.push(error.message));await fleetPage.goto(base);
  await fleetPage.getByLabel('Clan access key').fill(keys[0]);await fleetPage.getByRole('button',{name:'Enter command deck'}).click();await fleetPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await openComposer(fleetPage);
  await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();
  await fleetPage.getByLabel('Expedition destination').selectOption('1');await fleetPage.getByLabel('Send Interceptor',{exact:true}).fill('10');
  check(await fleetPage.getByTestId('available-interceptor').innerText()==='8'&&await fleetPage.getByRole('button',{name:'Add expedition to draft',exact:true}).isDisabled(),'Modal blocks 10 requested from 8 existing ships before drafting');
@@ -221,6 +234,7 @@ try{
  await fleetPage.setViewportSize({width:1440,height:1100});await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();await fleetPage.screenshot({path:resolve(artifacts,'expedition-modal-desktop.png')});
  // Force session unmount while open, proving no old selection survives a clan switch.
  await fleetPage.getByRole('button',{name:'Leave',exact:true}).evaluate(button=>button.click());await fleetPage.getByLabel('Clan access key').fill(keys[1]);await fleetPage.getByRole('button',{name:'Enter command deck'}).click();await fleetPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ await openComposer(fleetPage);
  check(await fleetPage.getByRole('dialog').count()===0&&await fleetPage.locator('.queue li').count()===0,'Clan switch unmounts modal and clears all private selection/draft state');
  await fleetPage.getByRole('button',{name:'Dawn, observed',exact:true}).click();await fleetPage.getByRole('button',{name:'Select expedition fleet',exact:true}).click();
  check(await fleetPage.getByLabel('Send Interceptor',{exact:true}).inputValue()==='0'&&await fleetPage.getByTestId('available-interceptor').innerText()==='8','New clan sees only its own inventory and a fresh zeroed selection');

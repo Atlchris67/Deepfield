@@ -1,0 +1,46 @@
+import {createServer} from 'vite';
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+
+let browser,checks=0;
+const check=(ok,name)=>{assert.ok(ok,name);checks++;console.log('PASS '+name);};
+const server=await createServer({configFile:false,root:process.cwd(),server:{host:'127.0.0.1',port:0},appType:'mpa'});
+try{
+ await server.listen();browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL??'msedge',headless:true});
+ const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[];
+ page.on('pageerror',error=>errors.push(error.message));
+ await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tests/real-systems-fixture.html`);
+ const opener=page.getByRole('button',{name:'Open atlas'});await opener.click();
+ const dialog=page.getByRole('dialog'),orbit=page.getByRole('img',{name:/Spacekit orbital view/}),sky=page.getByRole('group',{name:'Nearby real star systems'});
+ await dialog.waitFor();
+ const orbitBefore=await orbit.boundingBox();
+ for(let i=0;i<8;i++)await dialog.getByRole('button',{name:'Zoom orbit in'}).click();
+ const orbitAfter=await orbit.boundingBox(),orbitControl=await dialog.getByRole('button',{name:'Zoom orbit out'}).boundingBox();
+ check(Math.abs(orbitAfter.width-orbitBefore.width)<1&&Math.abs(orbitAfter.height-orbitBefore.height)<1,'Repeated orbital zoom preserves viewport dimensions');
+ check(orbitControl.y+orbitControl.height<=orbitAfter.y+1,'Orbital controls stay above the canvas');
+ await dialog.getByRole('button',{name:'Zoom orbit out'}).click();await dialog.getByRole('button',{name:'Reset orbit'}).click();
+ check((await dialog.locator('.orbitZoomControls').innerText()).includes('100%'),'Orbital zoom resets and remains clickable');
+ await dialog.getByRole('button',{name:'Zoom real sky in'}).click();await dialog.getByRole('button',{name:'Zoom real sky in'}).click();
+ check((await sky.locator('.realSkyWorld').getAttribute('style')).includes('scale(1.5)'),'Real sky zoom scales its map layer');
+ const box=await sky.boundingBox(),before=await sky.locator('.realSkyWorld').getAttribute('style');
+ await page.mouse.move(box.x+60,box.y+80);await page.mouse.down();await page.mouse.move(box.x+130,box.y+120,{steps:6});await page.mouse.up();
+ check((await sky.locator('.realSkyWorld').getAttribute('style'))!==before,'Dragging pans the real sky');
+ const first=sky.getByRole('button',{name:'Show Proxima Cen'});
+ await first.click();check((await dialog.locator('.realSystemDetails h3').innerText())==='Proxima Cen','Clicking a sky system opens its matching details');
+ const otherId=await sky.locator('.realStar').evaluateAll(buttons=>buttons.find(button=>{const rect=button.getBoundingClientRect();return button.dataset.system!=='0'&&document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)===button;})?.dataset.system);
+ assert.ok(otherId,'At least one other sky marker is directly clickable');
+ const other=sky.locator(`.realStar[data-system="${otherId}"]`);
+ const otherBox=await other.boundingBox();await page.mouse.move(otherBox.x+otherBox.width/2,otherBox.y+otherBox.height/2);await page.mouse.down();await page.mouse.move(otherBox.x+otherBox.width/2+30,otherBox.y+otherBox.height/2+20,{steps:5});await page.mouse.up();
+ check((await dialog.locator('.realSystemDetails h3').innerText())==='Proxima Cen','Dragging a marker does not select it');
+ await other.click();check((await dialog.locator('.realSystemDetails h3').innerText())!=='Proxima Cen','A click after dragging selects a system');
+ await dialog.getByRole('button',{name:'Reset sky'}).click();check((await sky.locator('.realSkyWorld').getAttribute('style')).includes('translate(0px, 0px) scale(1)'),'Sky reset restores position and scale');
+ await page.setViewportSize({width:390,height:690});
+ const mobileOrbit=await orbit.boundingBox(),mobileControl=await dialog.getByRole('button',{name:'Zoom orbit in'}).boundingBox();
+ check(mobileOrbit.width<=390&&mobileControl.y+mobileControl.height<=mobileOrbit.y+1,'Orbit and controls remain bounded after resize');
+ await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
+ check(await opener.evaluate(element=>document.activeElement===element),'Escape dismisses atlas and restores focus');
+ await opener.click();await dialog.waitFor();await dialog.getByRole('button',{name:'Close atlas'}).click();await dialog.waitFor({state:'detached'});
+ check(await page.evaluate(()=>document.body.style.overflow===''),'Close restores page scrolling');
+ check(errors.length===0,'No browser errors');
+ console.log(`${checks} real-system component checks passed.`);
+}finally{if(browser)await browser.close();await server.close();}

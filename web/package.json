@@ -15,11 +15,16 @@
     "test:edit-ui": "node tests/draft-edit-ui.mjs",
     "test:frontend": "npm run test:fleet && npm run test:fleet-ui && npm run test:intel-ui && npm run test:draft-ui && npm run test:edit && npm run test:edit-ui",
     "test:planet-ui": "node tests/planet-component.mjs",
-    "test:planet-api": "node tests/planet-api.mjs"
+    "test:planet-api": "node tests/planet-api.mjs",
+    "test:star-map-ui": "node tests/star-map-component.mjs",
+    "test:real-systems-ui": "node tests/real-sky-rotation-component.mjs",
+    "test:real-sky-projection": "node --experimental-strip-types tests/real-sky-projection.mjs",
+    "test:generated-campaign": "node tests/real-campaign-api.mjs"
   },
   "dependencies": {
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "spacekit.js": "^0.1.1"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

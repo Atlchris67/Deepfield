@@ -6,3 +6,5 @@ PreviewStorageChecks.Run();
 await LocalTurnChecks.Run();
 PlanetChecks.Run();
 StarMapChecks.Run();
+await GeneratedCampaignChecks.Run();
+await RealCampaignChecks.Run();

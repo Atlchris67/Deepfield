@@ -12,7 +12,8 @@ public record ReconRates(int Distant = 90, int Close = 65, int Deep = 35)
 }
 public record Intelligence(string Id, int Star, int Turn, DateTimeOffset At, string Phase, string Mission,
     bool Returned, bool? EnemyPresent, bool OwnerObserved, int? Owner, string? FleetBand, int? EnemyShips,
-    int? EnemyScouts, int? Collectors, int? Defense = null, int[]? EnemyComposition = null);
+    int? EnemyScouts, int? Collectors, int? Defense = null, int[]? EnemyComposition = null,
+    int[]? MaterialSurvey = null);
 
 public static class GameCodec
 {
@@ -27,6 +28,18 @@ public static class GameCodec
         if (game.Schema is not (1 or 2 or 3 or 4)) throw new InvalidOperationException("Unsupported save schema.");
         if (game.EconomyVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported economy ruleset.");
         if (game.CombatVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported combat ruleset.");
+        if (game.LogisticsVersion is not (0 or 1) || (game.LogisticsVersion == 1 && game.GeneratedMap?.RealCatalogVersion is null) ||
+            game.MaterialsVersion is not (0 or 1) || (game.MaterialsVersion == 1 && game.GeneratedMap?.RealCatalogVersion is null) ||
+            game.Clans.Any(c => c.IndustrialFocus is < -2 or > 2))
+            throw new InvalidOperationException("Invalid campaign rules options.");
+        if (game.GeneratedMap?.RealCatalogVersion is not null && (game.GeneratedMap.RealCatalogVersion != RealStarMap.Version ||
+            game.GeneratedMap.RealSystems is null ||
+            (game.LogisticsVersion == 0 && game.Clans.Any(c => c.Materials is not { Length: Materials.Count } || c.Materials.Any(n => n < 0))) ||
+            (game.LogisticsVersion == 1 && (game.Clans.Any(c => c.Materials is not null) ||
+                game.Stars.Any(s => s.Stockpile is not null && (s.Stockpile.Length != Materials.Count || s.Stockpile.Any(n => n < 0)) ||
+                    s.Owner is not null && s.Stockpile is null || s.Freighters is not { Length: 2 } || s.Freighters.Any(n => n < 0)))) ||
+            game.Stars.Any(s => s.Mines is < 0 or > 4 || s.SettlementSize is < 0 or > 4)))
+            throw new InvalidOperationException("Invalid real-system material save.");
         if(game.CombatVersion==1)
         {
             if(game.Stars.Any(s=>s.Fleets==null||s.Fleets.Length!=2||s.Fleets.Any(f=>f.Length!=5||f.Any(n=>n<0||n>10000))))throw new InvalidOperationException("Invalid typed fleet save.");
@@ -80,7 +93,9 @@ public static class Recon
                     returned && mission == "deep" ? target.Scouts[enemy] : null,
                     returned && mission == "deep" ? target.Collectors : null,
                     returned && mission == "deep" ? target.Defense : null,
-                    returned && mission == "deep" ? target.Fleets?[enemy].ToArray() : null);
+                    returned && mission == "deep" ? target.Fleets?[enemy].ToArray() : null,
+                    returned && mission == "deep" && g.GeneratedMap?.RealCatalogVersion is not null
+                        ? Materials.Survey(g, order.Target) : null);
                 g.Clans[team].Intelligence.Insert(0,intel);
                 g.Clans[team].Reports.Insert(0,$"Turn {g.Turn}: {mission} scout at {g.Stars[order.Target].Name}: " +
                     (returned ? "returned with a dated intelligence report." : "lost; only limited contact information received."));

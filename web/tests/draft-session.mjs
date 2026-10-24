@@ -33,12 +33,20 @@ try{
   }
   throw Error('Unexpected synthetic request '+path);
  });
- const login=async(key='aurora')=>{await page.getByLabel('Clan access key').fill(key);await page.getByRole('button',{name:'Enter command deck'}).click();await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();};
- const add=async()=>{await page.getByLabel('Action at Hearth').selectOption('collector');await page.getByRole('button',{name:'+ Add to draft'}).click();};
+ const login=async(key='aurora')=>{await page.getByLabel('Clan access key').fill(key);await page.getByRole('button',{name:'Enter command deck'}).click();await page.getByRole('heading',{name:'The stars are within reach.'}).waitFor();await page.getByRole('tab',{name:'Clan channel'}).click();};
+ const add=async()=>{const composer=page.locator('.orderComposer');if(!(await composer.getAttribute('open')))await composer.locator('summary').click();await page.getByLabel('Action at Hearth').selectOption('collector');await page.getByRole('button',{name:'+ Add to draft'}).click();};
  const commit=()=>page.getByRole('button',{name:'Commit orders',exact:true});
  const retry=()=>page.getByRole('button',{name:'Retry submission',exact:true});
  const flush=async()=>{const callbacks=pending;pending=[];await Promise.all(callbacks.map(fn=>fn()));};
- await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/`);await login();await add();
+ await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/`);await login();
+ const skyBox=await page.locator('#galaxy-board').boundingBox(),ordersBox=await page.locator('#turn-orders').boundingBox();
+ check(skyBox&&ordersBox&&Math.abs(skyBox.y-ordersBox.y)<24&&skyBox.width>ordersBox.width,'Wide layout keeps playable sky dominant beside turn controls');
+ await page.getByRole('tab',{name:'Intelligence'}).click();check(await page.getByRole('tabpanel',{name:'Intelligence'}).isVisible(),'Secondary data switches without replacing command board');
+ await page.getByRole('tab',{name:'Intelligence'}).press('ArrowRight');check(await page.getByRole('tab',{name:'Clan channel'}).getAttribute('aria-selected')==='true','Details tabs support keyboard navigation');
+ await page.setViewportSize({width:390,height:844});check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Compact layout has no horizontal overflow');
+ await page.setViewportSize({width:1440,height:900});await add();
+ await page.getByRole('tab',{name:'Economy & logistics'}).click();check(await page.locator('.queue li').count()===1,'Changing details tabs preserves the unsent order draft');
+ await page.getByRole('tab',{name:'Clan channel'}).click();
  await commit().evaluate(button=>{button.click();button.click();});
  await page.waitForFunction(()=>document.querySelector('.orderFooter button')?.disabled);
  // A subsequent roundtrip gives both synchronous event handlers time to reach interception.
@@ -47,6 +55,8 @@ try{
  await flush();await page.getByRole('status').filter({hasText:'Orders committed.'}).waitFor();
  // Rejection unlocks editing; uncertain responses retain exact retry identity.
  await add();putMode='reject';await commit().click();await page.getByRole('alert').filter({hasText:'definitive rejection'}).waitFor();
+ const inlineError=await page.locator('#turn-orders .error[role="status"]').boundingBox(),commitBox=await commit().boundingBox();
+ check(inlineError&&commitBox&&inlineError.y-commitBox.y<150,'Rejected order error appears beside Commit controls');
  check(await page.getByRole('button',{name:'Remove order 1',exact:true}).isEnabled(),'Definitive rejection unlocks the retained draft');
  putMode='network';await commit().click();await retry().waitFor();await page.getByRole('alert').waitFor();const original=puts.at(-1);
  check(await page.getByRole('button',{name:'Remove order 1',exact:true}).isDisabled(),'Network ambiguity locks draft edits');
@@ -95,6 +105,7 @@ try{
  await run().evaluate(button=>{button.click();button.click();});await page.getByRole('button',{name:'Leave',exact:true}).focus();
  check(advances.length===1&&advances[0].turn===turnBefore&&puts.length===putsBefore,'Repeated Run turn sends one expected-turn request and no order submission');
  await flush();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
+ await page.getByRole('tab',{name:'Reports & rules'}).click();
  check(await page.getByText('Synthetic resolved turn report',{exact:true}).isVisible()&&await run().isEnabled(),'Successful Run turn refreshes reports and releases the control');
  advanceMode='fail';await run().click();await page.getByRole('alert').filter({hasText:'Synthetic turn uncertainty'}).waitFor();
  check(await run().isEnabled(),'Failed Run turn releases control for same-turn retry');

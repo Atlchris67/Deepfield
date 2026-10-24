@@ -16,6 +16,28 @@ public static class ReconChecks
         Check(JsonSerializer.Serialize(g)==JsonSerializer.Serialize(copy),"Recon resolution and reports replay deterministically");
         var intel=g.Clans[0].Intelligence.Single();
         Check(intel.EnemyShips==7&&intel.EnemyScouts==2&&intel.Collectors==3&&intel.Owner==1&&intel.Returned,"Returning deep scout reports encountered exact composition");
+        var realMap=RealStarMap.Generate();
+        var real=Rules.CreateFromMap(realMap,now,false);
+        real.ReconRates=new(100,100,100);
+        var source=realMap.Homeworlds[0].SystemId;
+        real.Stars[source].Scouts[0]=2;
+        real.Stars[3].Ships[1]=7; // Ross 128 in pinned catalog v1.
+        real.Clans[0].Orders=[new("recon",source,3,1,"deep"),new("recon",source,6,1,"deep")]; // eps Ind A is ID 6.
+        Recon.Resolve(real,now);
+        var observed=Rules.Observe(real,0);
+        Check(observed.Stars[3].Statistics?.Fleets.Single().CombatShips==7&&observed.Stars[3].Statistics?.Knowledge=="historical",
+            "Returning deep scout projects dated Ross 128 enemy ship count");
+        Check(observed.Stars[6].Statistics?.MaterialSurvey?.Sum()==realMap.RealSystems![6].Planets.Count&&
+              observed.Intelligence!.Single(report=>report.Star==6).MaterialSurvey?.SequenceEqual(Materials.Survey(real,6))==true,
+            "Returning deep scout records eps Ind A material sites without claiming production");
+        Check(Rules.Observe(real,1).Intelligence!.Count==0&&GameCodec.Read(JsonSerializer.Serialize(real)).Clans[0].Intelligence.Single(report=>report.Star==6).MaterialSurvey is not null,
+            "Survey stays clan-private and persists through save reload");
+        var lostReal=Rules.CreateFromMap(realMap,now,false);
+        lostReal.ReconRates=new(0,0,0);
+        lostReal.Stars[source].Scouts[0]=1;
+        lostReal.Clans[0].Orders=[new("recon",source,6,1,"deep")];
+        Recon.Resolve(lostReal,now);
+        Check(lostReal.Clans[0].Intelligence.Single().MaterialSurvey is null,"Lost deep scout reveals no material sites");
         Check(g.Stars[0].Scouts[0]==4&&!Rules.Resolve(g,due)&&g.Clans[0].Intelligence.Count==1,"Scout return/repeated resolution preserves fleet and one report");
         Check(Rules.Observe(g,1).Intelligence!.Count==0&&Rules.Observe(g,0).Stars[1].Ships==null,"ISR is clan-private and does not grant live target vision");
         g.Stars[1].Ships[1]=99;Rules.Resolve(g,g.Deadline);

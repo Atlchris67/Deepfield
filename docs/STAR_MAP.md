@@ -27,3 +27,5 @@ Generation uses a repository-owned SplitMix64 sequence instead of `System.Random
 ## Verification
 
 `StarMapChecks` covers an exact version-1 seed fixture, replay, seed variation, coordinate bounds, minimum separation, link normalization, graph connectivity, unique homeworlds, JSON persistence and invalid/impossible configuration rejection.
+
+The local host configuration and SVG preview built on this contract are documented in [STAR_MAP_SETUP.md](STAR_MAP_SETUP.md).
