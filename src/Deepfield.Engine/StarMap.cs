@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Deepfield.Engine;
 
 /// <summary>
@@ -14,7 +16,11 @@ public sealed record StarMapSettings(
 
 public sealed record GeneratedSystem(int Id, string Name, int X, int Y);
 public sealed record StarMapLink(int From, int To);
-public sealed record HomeworldAssignment(int PlayerSlot, int SystemId);
+public sealed record HomeworldAssignment(int PlayerSlot, int SystemId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? PlanetId = null);
+public sealed record CatalogPlanet(int Id, string Name, double PeriodDays, double SemiMajorAu, double? RadiusEarth);
+public sealed record CatalogSystem(int Id, string Name, double RaDeg, double DecDeg, double DistancePc,
+    double? TemperatureK, IReadOnlyList<CatalogPlanet> Planets);
 
 /// <summary>
 /// Persist this complete snapshot with a campaign. Seed and version are provenance,
@@ -26,12 +32,15 @@ public sealed record GeneratedStarMap(
     StarMapSettings Settings,
     IReadOnlyList<GeneratedSystem> Systems,
     IReadOnlyList<StarMapLink> Links,
-    IReadOnlyList<HomeworldAssignment> Homeworlds);
+    IReadOnlyList<HomeworldAssignment> Homeworlds,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? RealCatalogVersion = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CatalogSystem>? RealSystems = null);
 
 public static class StarMapGenerator
 {
     public const int CurrentVersion = 1;
 
+    // Kept for version-1 saved map compatibility. The creation API now accepts only RealStarMap.
     private static readonly string[] Names =
     [
         "Hearth", "Lumen", "Vesper", "Sable", "Meridian", "Halo",

@@ -30,10 +30,10 @@ public static class CounterBattle
     {
         public int To=to,Reverse=reverse,Capacity=capacity,Cost=cost;
     }
-    // Exact maximum-value simultaneous salvo. Each ship has one attack; it can
-    // destroy one same-class hull or a hull it counters. Integer network flow
+    // Exact maximum-value simultaneous salvo. Assault packages add one shot per
+    // four ships; each shot can destroy one same-class hull or a hull it counters. Integer network flow
     // optimizes target allocation without changing attack power as targets change.
-    static int[] Damage(Fleet attacker,Fleet target)
+    static int[] Damage(Fleet attacker,Fleet target,int[] attackerPackages)
     {
         const int source=10,sink=11,nodes=12;
         var graph=Enumerable.Range(0,nodes).Select(_=>new List<Edge>()).ToArray();
@@ -45,7 +45,8 @@ public static class CounterBattle
         var targetEdges=new Edge[5];
         for(var h=0;h<5;h++)
         {
-            Add(source,h,attacker.Counts[h],0);
+            var shots=attacker.Counts[h]+(attackerPackages[h]==1?attacker.Counts[h]/4:0);
+            Add(source,h,shots,0);
             targetEdges[h]=Add(h+5,sink,target.Counts[h],-Cost((Hull)h));
             for(var t=0;t<5;t++)if(h==t||Counters((Hull)h,(Hull)t))Add(h,t+5,50030,0);
         }
@@ -73,9 +74,18 @@ public static class CounterBattle
         return Enumerable.Range(0,5).Select(h=>target.Counts[h]-targetEdges[h].Capacity).ToArray();
     }
     public static Outcome Resolve(Fleet left,Fleet right)
+        => Resolve(left,right,new int[5],new int[5]);
+    public static Outcome Resolve(Fleet left,Fleet right,int[] leftPackages,int[] rightPackages)
     {
         Validate(left);Validate(right);
-        var inflictedLeft=Damage(left,right);var inflictedRight=Damage(right,left);
+        if(leftPackages.Length!=5||rightPackages.Length!=5||leftPackages.Concat(rightPackages).Any(package=>package is < 0 or > 2))
+            throw new ArgumentException("Five valid packages are required for each fleet.");
+        var inflictedLeft=Damage(left,right,leftPackages);var inflictedRight=Damage(right,left,rightPackages);
+        for(var h=0;h<5;h++)
+        {
+            if(leftPackages[h]==2)inflictedRight[h]=Math.Max(0,inflictedRight[h]-left.Counts[h]/4);
+            if(rightPackages[h]==2)inflictedLeft[h]=Math.Max(0,inflictedLeft[h]-right.Counts[h]/4);
+        }
         var l=new Fleet(left.Counts.Zip(inflictedRight,(count,lost)=>count-lost).ToArray());
         var r=new Fleet(right.Counts.Zip(inflictedLeft,(count,lost)=>count-lost).ToArray());
         // Decisive-rout abstraction: the side with less surviving credit value

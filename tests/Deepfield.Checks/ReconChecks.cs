@@ -16,6 +16,28 @@ public static class ReconChecks
         Check(JsonSerializer.Serialize(g)==JsonSerializer.Serialize(copy),"Recon resolution and reports replay deterministically");
         var intel=g.Clans[0].Intelligence.Single();
         Check(intel.EnemyShips==7&&intel.EnemyScouts==2&&intel.Collectors==3&&intel.Owner==1&&intel.Returned,"Returning deep scout reports encountered exact composition");
+        var realMap=RealStarMap.Generate();
+        var real=Rules.CreateFromMap(realMap,now,false);
+        real.ReconRates=new(100,100,100);
+        var source=realMap.Homeworlds[0].SystemId;
+        real.Stars[source].Scouts[0]=2;
+        real.Stars[3].Ships[1]=7; // Ross 128 in pinned catalog v1.
+        real.Clans[0].Orders=[new("recon",source,3,1,"deep"),new("recon",source,6,1,"deep")]; // eps Ind A is ID 6.
+        Recon.Resolve(real,now);
+        var observed=Rules.Observe(real,0);
+        Check(observed.Stars[3].Statistics?.Fleets.Single().CombatShips==7&&observed.Stars[3].Statistics?.Knowledge=="historical",
+            "Returning deep scout projects dated Ross 128 enemy ship count");
+        Check(observed.Stars[6].Statistics?.MaterialSurvey?.Sum()==realMap.RealSystems![6].Planets.Count&&
+              observed.Intelligence!.Single(report=>report.Star==6).MaterialSurvey?.SequenceEqual(Materials.Survey(real,6))==true,
+            "Returning deep scout records eps Ind A material sites without claiming production");
+        Check(Rules.Observe(real,1).Intelligence!.Count==0&&GameCodec.Read(JsonSerializer.Serialize(real)).Clans[0].Intelligence.Single(report=>report.Star==6).MaterialSurvey is not null,
+            "Survey stays clan-private and persists through save reload");
+        var lostReal=Rules.CreateFromMap(realMap,now,false);
+        lostReal.ReconRates=new(0,0,0);
+        lostReal.Stars[source].Scouts[0]=1;
+        lostReal.Clans[0].Orders=[new("recon",source,6,1,"deep")];
+        Recon.Resolve(lostReal,now);
+        Check(lostReal.Clans[0].Intelligence.Single().MaterialSurvey is null,"Lost deep scout reveals no material sites");
         Check(g.Stars[0].Scouts[0]==4&&!Rules.Resolve(g,due)&&g.Clans[0].Intelligence.Count==1,"Scout return/repeated resolution preserves fleet and one report");
         Check(Rules.Observe(g,1).Intelligence!.Count==0&&Rules.Observe(g,0).Stars[1].Ships==null,"ISR is clan-private and does not grant live target vision");
         g.Stars[1].Ships[1]=99;Rules.Resolve(g,g.Deadline);
@@ -47,6 +69,41 @@ public static class ReconChecks
         var noCombatShips=Fixture();noCombatShips.Stars[0].Ships[0]=0;var moveRejected=false;
         try{Rules.Validate(Rules.Observe(noCombatShips,0),[new("move",0,1,1)]);}catch(RuleException){moveRejected=true;}
         Check(moveRejected,"Scout inventory cannot be spent as ordinary moving/combat ships");
+        Game TransportFixture(){var game=Rules.Create(42,now,false);game.Stars[0].Scouts[0]=2;return game;}
+        var transit=TransportFixture();transit.Stars[1].Owner=0;
+        Rules.Submit(transit,0,new(1,0,"scout-transfer",[new("move",0,1,2,Scouts:2)]),now);
+        Rules.Resolve(transit,transit.Deadline);
+        Check(transit.Stars[0].Scouts[0]==0&&transit.Stars[1].Scouts[0]==2&&transit.Stars[1].Owner==0,
+            "Scouts relocate with surviving fleet to an owned colony");
+        var settlementTransit=TransportFixture();
+        Rules.Submit(settlementTransit,0,new(1,0,"settlement-scouts",[new("move",0,1,2,Scouts:2)]),now);
+        Rules.Resolve(settlementTransit,settlementTransit.Deadline);
+        Check(settlementTransit.Stars[1].Owner==0&&settlementTransit.Stars[1].Ships[0]==0&&settlementTransit.Stars[1].Scouts[0]==2,
+            "Scouts land when two surviving ships become colony habitats");
+        var colonyView=Rules.Observe(settlementTransit,0);
+        Rules.Validate(colonyView,[new("recon",1,2,1,"distant")]);
+        Check(colonyView.Stars[1].Scouts![0]==2&&colonyView.Stars[2].Known,
+            "Relocated scouts can depart on reconnaissance from the new colony next turn");
+        var lostTransit=TransportFixture();lostTransit.Stars[1].Owner=1;lostTransit.Stars[1].Ships[1]=5;
+        Rules.Submit(lostTransit,0,new(1,0,"lost-scouts",[new("move",0,1,2,Scouts:2)]),now);
+        Rules.Resolve(lostTransit,lostTransit.Deadline);
+        Check(lostTransit.Stars[0].Scouts[0]==0&&lostTransit.Stars[1].Scouts[0]==0&&lostTransit.Clans[0].Reports.Any(report=>report.Contains("scouts bound for")&&report.Contains("lost")),
+            "Scouts are lost when their expedition fleet cannot secure a colony");
+        foreach(var orders in new List<Order>[] {
+            [new("move",0,1,2,Scouts:2),new("recon",0,1,1,"distant")],
+            [new("recon",0,1,1,"distant"),new("move",0,1,2,Scouts:2)]})
+        {
+            var rejected=false;try{Rules.Validate(Rules.Observe(TransportFixture(),0),orders);}catch(RuleException){rejected=true;}
+            Check(rejected,"Expedition and reconnaissance cannot reserve the same scout twice");
+        }
+        var invalidScoutOrder=false;
+        try{Rules.Validate(Rules.Observe(TransportFixture(),0),[new("build",0,Ships:1,Scouts:1)]);}catch(RuleException){invalidScoutOrder=true;}
+        Check(invalidScoutOrder,"Construction cannot carry scouts");
+        Check(!JsonSerializer.Serialize(new Order("move",0,1,2)).Contains("Scouts"),"Legacy order payloads omit the new default scout field");
+        var typedTransit=Rules.Create(42,now,false,combatVersion:1);typedTransit.Stars[0].Scouts[0]=1;
+        Rules.Submit(typedTransit,0,new(1,0,"typed-scouts",[new("move",0,1,2,Hull:"interceptor",Scouts:1)]),now);
+        Rules.Resolve(typedTransit,typedTransit.Deadline);
+        Check(typedTransit.Stars[1].Owner==0&&typedTransit.Stars[1].Scouts[0]==1,"Typed interceptor expedition can found a colony with its scout passenger");
         Check(new ReconRates()==new ReconRates(90,65,35),"Initial distant/close/deep return targets are 90/65/35");
         var unpredictableA=Rules.Create(42017,now,false);var unpredictableB=Rules.Create(42017,now,false);
         Check(unpredictableA.ReconEntropy!=unpredictableB.ReconEntropy,"Identical public map seeds receive independent private game entropy");

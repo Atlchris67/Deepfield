@@ -3,7 +3,7 @@ namespace Deepfield.Engine;
 public record PlanetFleet(int Team, int? CombatShips, int? Scouts, int[]? Composition, int? TotalShips);
 public record PlanetStats(string Knowledge, int? Turn, DateTimeOffset? At, string? Phase, string? Mission,
     bool OwnerObserved, int? Owner, bool? EnemyPresent, string? FleetBand, int? Collectors, int? Defense,
-    int? ColonyIncome, List<PlanetFleet> Fleets);
+    int? ColonyIncome, List<PlanetFleet> Fleets, int[]? MaterialSurvey = null);
 
 /// <summary>Only accepts the already-authorized map view and this clan's reports, never hidden world state.</summary>
 public static class PlanetStatistics
@@ -26,6 +26,7 @@ public static class PlanetStatistics
         return new("historical", report.Turn, report.At, report.Phase, report.Mission,
             report.OwnerObserved, report.OwnerObserved ? report.Owner : null, report.EnemyPresent, report.FleetBand,
             report.Collectors, report.Defense, null,
-            [Fleet(1 - team, report.EnemyShips, report.EnemyScouts, report.EnemyComposition)]);
+            [Fleet(1 - team, report.EnemyShips, report.EnemyScouts, report.EnemyComposition)],
+            report.MaterialSurvey?.ToArray());
     }
 }

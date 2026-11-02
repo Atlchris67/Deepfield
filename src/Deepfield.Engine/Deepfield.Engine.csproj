@@ -5,5 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../web/src/realSystems.json" LogicalName="Deepfield.Engine.realSystems.json" />
+  </ItemGroup>
 
 </Project>
