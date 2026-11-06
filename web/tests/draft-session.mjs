@@ -20,7 +20,7 @@ try{
   if(path==='/api/local/advance'){
    advances.push(request.postDataJSON());
    if(advanceMode==='fail'){await route.fulfill({status:503,json:{error:'Synthetic turn uncertainty'}});return;}
-   pending.push(async()=>{const advanced=advanceMode!=='stale';if(advanced){states[team].turn++;states[team].orders=[];states[team].reports=['Synthetic resolved turn report'];}await route.fulfill({json:{advanced,turn:states[team].turn}});});return;
+   pending.push(async()=>{const advanced=advanceMode!=='stale';if(advanced){states[team].turn++;states[team].orders=[];states[team].reports=['Turn 1 complete. Income 30; 2 colonies; 2/8 energy collectors.','Synthetic resolved turn report'];}await route.fulfill({json:{advanced,turn:states[team].turn}});});return;
   }
   if(path==='/api/orders'){
    const body=request.postDataJSON();puts.push(body);putTeams.push(team);
@@ -106,7 +106,7 @@ try{
  check(advances.length===1&&advances[0].turn===turnBefore&&puts.length===putsBefore,'Repeated Run turn sends one expected-turn request and no order submission');
  await flush();await page.getByRole('status').filter({hasText:'Turn resolved. Reports refreshed.'}).waitFor();
  await page.getByRole('tab',{name:'Reports & rules'}).click();
- check(await page.getByText('Synthetic resolved turn report',{exact:true}).isVisible()&&await run().isEnabled(),'Successful Run turn refreshes reports and releases the control');
+ check(await page.getByRole('region',{name:'Turn 1 debrief'}).getByText('Synthetic resolved turn report').isVisible()&&await run().isEnabled(),'Successful Run turn shows the latest result and releases the control');
  advanceMode='fail';await run().click();await page.getByRole('alert').filter({hasText:'Synthetic turn uncertainty'}).waitFor();
  check(await run().isEnabled(),'Failed Run turn releases control for same-turn retry');
  advanceMode='stale';await run().click();await page.getByRole('button',{name:'Leave',exact:true}).focus();await flush();await page.getByRole('status').filter({hasText:'Turn already resolved'}).waitFor();
