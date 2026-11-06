@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import ts from 'typescript';
 const source=await readFile(new URL('../src/fleetSelection.ts',import.meta.url),'utf8');
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
-const {available,validateExpedition,selectionAtSource,emptySelection}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+const {available,availableScouts,validateExpedition,selectionAtSource,emptySelection}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
 let checks=0;function check(value,name){assert.ok(value,name);checks++;console.log('PASS '+name);}
 const star=(id,counts=[8,0,2,0,0])=>({id,name:'Star '+id,x:0,y:0,known:true,visible:true,owner:0,collectors:0,ships:[counts.reduce((a,b)=>a+b,0),0],scouts:[2,0],defense:0,fleets:[counts,[0,0,0,0,0]]});
 const stars=[star(0),star(1,[2,0,0,0,0]),star(6,[0,0,0,0,0])];
@@ -31,6 +31,12 @@ check(validate({draft:full.slice(1)}).valid,'One hull fits the final remaining s
 check(has(validate({draft:full.slice(1),counts:['1','0','1','0','0']}),'order-limit'),'Two selected hulls require two order slots');
 const mixed=validate({counts:['4','0','2','0','0']});
 check(mixed.orders.length===2&&mixed.orders[1].hull==='cruiser','Mixed selection produces one order per selected hull');
+const escorted=validate({counts:['4','0','2','0','0'],scouts:'2'});
+check(escorted.valid&&escorted.orders[0].scouts===2&&escorted.orders[1].scouts===undefined,'Scouts travel once with a selected fleet');
+check(availableScouts(stars[0],0,[{...move(2),scouts:1},{kind:'recon',source:0,target:1,ships:1,mission:'deep'}])===0,'Expedition and reconnaissance reserve the same scout inventory');
+check(has(validate({counts:['1','0','0','0','0'],scouts:'2',draft:[{kind:'recon',source:0,target:1,ships:1,mission:'deep'}]}),'scouts'),'Cannot overbook scouts already drafted for reconnaissance');
+check(has(validate({source:1,target:0,scouts:'1',counts:['1','0','0','0','0'],stars:[stars[0],{...star(1),owner:1}]}),'scouts'),'Scouts cannot depart from an unowned system');
+check(has(validate({scouts:'1',counts:['0','0','0','0','0']}),'empty'),'Scouts cannot move without an escorting ship');
 check(validate({counts:['0','0','0','0','0']}).orders.length===0,'Zero selection produces no orders');
 check(has(validate({target:11}),'destination'),'Unknown or unlinked destination rejected');
 check(has(validate({source:99}),'source'),'Missing source rejected without throwing');

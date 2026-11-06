@@ -4,7 +4,8 @@ import ts from 'typescript';
 const transpile=source=>ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
 const url=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
 const fleet=url(transpile(await readFile(new URL('../src/fleetSelection.ts',import.meta.url),'utf8')));
-const source=transpile(await readFile(new URL('../src/draftEditing.ts',import.meta.url),'utf8')).replace("'./fleetSelection'",JSON.stringify(fleet));
+const materials=url(transpile(await readFile(new URL('../src/materialReservations.ts',import.meta.url),'utf8')).replace("'./fleetSelection'",JSON.stringify(fleet)));
+const source=transpile(await readFile(new URL('../src/draftEditing.ts',import.meta.url),'utf8')).replace("'./fleetSelection'",JSON.stringify(fleet)).replace("'./materialReservations'",JSON.stringify(materials));
 const {draftItem,wireOrder,replaceDraft,validateEdit}=await import(url(source));
 let checks=0;const check=(ok,name)=>{assert.ok(ok,name);checks++;console.log('PASS '+name);};
 const star=(id,ships=8)=>({id,name:'Star '+id,known:true,visible:true,owner:0,ships:[ships,0],fleets:[[ships,0,2,0,0],[0,0,0,0,0]],scouts:[1,0],defense:2});
@@ -34,4 +35,8 @@ check(!valid({kind:'defense',source:0,target:0,ships:1},{},[first,...Array.from(
 check(!valid({kind:'collector',source:0,target:0,ships:1},{stars:[{...star(0),owner:1},star(1)]}),'Construction still requires owned colony');
 check(!valid({kind:'build',source:0,target:0,ships:2,hull:'interceptor'},{stars:[star(0,9999),star(1,0)]}),'Typed construction retains global hull cap');
 check(!valid({...move(1),hull:'unknown'}),'Invalid hull rejected');
+check(valid({...move(2),scouts:1}),'Draft expedition may carry an available scout');
+check(!valid({...move(2),scouts:2}, {}, [first,draftItem({kind:'recon',source:0,target:1,ships:1,mission:'deep'})]),'Editing expedition respects scout reserved for reconnaissance');
+check(!valid({...move(2),scouts:1},{stars:[{...star(0),owner:1},star(1)]}),'Edited scout expedition must depart from a clan colony');
+check(!valid({...move(2),scouts:1.5}),'Edited scout count must be whole');
 console.log(`${checks} draft edit validation checks passed.`);

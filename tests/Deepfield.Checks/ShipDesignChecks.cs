@@ -31,6 +31,9 @@ public static class ShipDesignChecks
         Reject(() => Rules.Validate(Rules.Observe(game, 0), [refit, refit]), "One package change per hull per turn");
         Reject(() => Rules.Validate(Rules.Observe(game, 0), [refit with { Package = "unknown" }]), "Unknown package rejected");
         Reject(() => Rules.Validate(Rules.Observe(game, 0), [refit with { Package = "standard" }]), "No-op package change rejected");
+        Rules.Validate(Rules.Observe(game, 0), [refit with { Package = "assault-reinforced" }]);
+        Check(ShipDesign.MaterialCost("assault-reinforced").SequenceEqual([2, 1, 2, 1, 0, 0]),
+            "Combined package requires both material sets");
         Reject(() => Rules.Validate(Rules.Observe(game, 0), [new("build", 0, Ships: 1, Package: "assault")]), "Package cannot attach to construction order");
         Reject(() => Rules.Validate(Rules.Observe(Rules.Create(42, now, false), 0), [refit]), "Classic fleet cannot adopt a typed package");
 
@@ -59,6 +62,12 @@ public static class ShipDesignChecks
             [2, 0, 0, 0, 0], [0, 0, 0, 0, 0]);
         Check(shielded.Left.Counts[0] == 2 && shielded.Right.Value == 0,
             "Reinforced package absorbs one loss per four ships");
+        var combinedAttack = CounterBattle.Resolve(left, right, [0, 3, 0, 0, 0], [0, 0, 0, 0, 0]);
+        var combinedArmor = CounterBattle.Resolve(new Fleet([8, 0, 0, 0, 0]), new Fleet([8, 0, 0, 0, 0]),
+            [3, 0, 0, 0, 0], [0, 0, 0, 0, 0]);
+        Check(combinedAttack.Left.Value > 0 && combinedAttack.Right.Value == 0 &&
+              combinedArmor.Left.Counts[0] >= shielded.Left.Counts[0] && combinedArmor.Right.Value == 0,
+            "Combined package applies assault shots and reinforced loss absorption");
         var battle = New();
         battle.Clans[0].ShipDesigns[1] = "assault";
         battle.Stars[1].Fleets! [0] = [1, 4, 0, 0, 0];

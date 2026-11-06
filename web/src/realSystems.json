@@ -1,0 +1,409 @@
+{
+  "source": "NASA Exoplanet Archive, Planetary Systems Composite Parameters (pscomppars)",
+  "sourceUrl": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select%20top%20500%20hostname%2Cpl_name%2Cra%2Cdec%2Csy_dist%2Cpl_orbper%2Cpl_orbsmax%2Cpl_rade%2Cst_teff%20from%20pscomppars%20where%20sy_dist%3C50%20and%20pl_orbper%20is%20not%20null%20and%20pl_orbsmax%20is%20not%20null%20order%20by%20sy_dist&format=json",
+  "retrievedUtc": "2026-10-21T14:14:57.960Z",
+  "systems": [
+    {
+      "name": "Proxima Cen",
+      "raDeg": 217.3934657,
+      "decDeg": -62.6761821,
+      "distancePc": 1.30119,
+      "temperatureK": 2900,
+      "planets": [
+        {
+          "name": "Proxima Cen b",
+          "periodDays": 11.18465,
+          "semiMajorAu": 0.04848,
+          "radiusEarth": 1.02
+        },
+        {
+          "name": "Proxima Cen d",
+          "periodDays": 5.12338,
+          "semiMajorAu": 0.02881,
+          "radiusEarth": 0.692
+        }
+      ]
+    },
+    {
+      "name": "Barnard's star",
+      "raDeg": 269.4486144,
+      "decDeg": 4.7379808,
+      "distancePc": 1.82655,
+      "temperatureK": 3195,
+      "planets": [
+        {
+          "name": "Barnard c",
+          "periodDays": 4.1244,
+          "semiMajorAu": 0.0274,
+          "radiusEarth": 0.743
+        }
+      ]
+    },
+    {
+      "name": "GJ 887",
+      "raDeg": 346.5027573,
+      "decDeg": -35.8473489,
+      "distancePc": 3.28679,
+      "temperatureK": 3688,
+      "planets": [
+        {
+          "name": "GJ 887 d",
+          "periodDays": 50.77,
+          "semiMajorAu": 0.212,
+          "radiusEarth": 2.34
+        },
+        {
+          "name": "GJ 887 b",
+          "periodDays": 9.2619,
+          "semiMajorAu": 0.0683,
+          "radiusEarth": 1.8
+        }
+      ]
+    },
+    {
+      "name": "Ross 128",
+      "raDeg": 176.9376036,
+      "decDeg": 0.7992898,
+      "distancePc": 3.37454,
+      "temperatureK": 3192,
+      "planets": [
+        {
+          "name": "Ross 128 b",
+          "periodDays": 9.8658,
+          "semiMajorAu": 0.0496,
+          "radiusEarth": 1.11
+        }
+      ]
+    },
+    {
+      "name": "GJ 15 A",
+      "raDeg": 4.6126677,
+      "decDeg": 44.0247296,
+      "distancePc": 3.56228,
+      "temperatureK": 3607,
+      "planets": [
+        {
+          "name": "GJ 15 A b",
+          "periodDays": 11.4407,
+          "semiMajorAu": 0.072,
+          "radiusEarth": 1.55
+        }
+      ]
+    },
+    {
+      "name": "tau Cet",
+      "raDeg": 26.0093029,
+      "decDeg": -15.9337987,
+      "distancePc": 3.60304,
+      "temperatureK": 5310,
+      "planets": [
+        {
+          "name": "tau Cet f",
+          "periodDays": 636.13,
+          "semiMajorAu": 1.334,
+          "radiusEarth": 1.81
+        }
+      ]
+    },
+    {
+      "name": "eps Ind A",
+      "raDeg": 330.8714021,
+      "decDeg": -56.7969023,
+      "distancePc": 3.63857,
+      "temperatureK": 4700,
+      "planets": [
+        {
+          "name": "eps Ind A b",
+          "periodDays": 25450,
+          "semiMajorAu": 15.76,
+          "radiusEarth": 12.7
+        }
+      ]
+    },
+    {
+      "name": "GJ 1061",
+      "raDeg": 54.0032486,
+      "decDeg": -44.5143104,
+      "distancePc": 3.67278,
+      "temperatureK": 2953,
+      "planets": [
+        {
+          "name": "GJ 1061 c",
+          "periodDays": 6.6821,
+          "semiMajorAu": 0.0342,
+          "radiusEarth": 1.19
+        }
+      ]
+    },
+    {
+      "name": "YZ Cet",
+      "raDeg": 18.1330792,
+      "decDeg": -16.9962434,
+      "distancePc": 3.71207,
+      "temperatureK": 3151,
+      "planets": [
+        {
+          "name": "YZ Cet b",
+          "periodDays": 2.02087,
+          "semiMajorAu": 0.01634,
+          "radiusEarth": 0.913
+        },
+        {
+          "name": "YZ Cet d",
+          "periodDays": 4.65626,
+          "semiMajorAu": 0.02851,
+          "radiusEarth": 1.03
+        }
+      ]
+    },
+    {
+      "name": "Kapteyn",
+      "raDeg": 77.9586613,
+      "decDeg": -45.0430198,
+      "distancePc": 3.93305,
+      "temperatureK": 3550,
+      "planets": [
+        {
+          "name": "Kapteyn c",
+          "periodDays": 121.54,
+          "semiMajorAu": 0.311,
+          "radiusEarth": 2.54
+        }
+      ]
+    },
+    {
+      "name": "Wolf 1061",
+      "raDeg": 247.5748276,
+      "decDeg": -12.6676866,
+      "distancePc": 4.30592,
+      "temperatureK": 3342,
+      "planets": [
+        {
+          "name": "Wolf 1061 b",
+          "periodDays": 4.8869,
+          "semiMajorAu": 0.0375,
+          "radiusEarth": 1.21
+        }
+      ]
+    },
+    {
+      "name": "GJ 687",
+      "raDeg": 264.1041731,
+      "decDeg": 68.3336741,
+      "distancePc": 4.54939,
+      "temperatureK": 3413,
+      "planets": [
+        {
+          "name": "GJ 687 c",
+          "periodDays": 727.562,
+          "semiMajorAu": 1.165,
+          "radiusEarth": 4.14
+        }
+      ]
+    },
+    {
+      "name": "GJ 876",
+      "raDeg": 343.3239737,
+      "decDeg": -14.2665958,
+      "distancePc": 4.67517,
+      "temperatureK": 3293.74,
+      "planets": [
+        {
+          "name": "GJ 876 b",
+          "periodDays": 61.1166,
+          "semiMajorAu": 0.208317,
+          "radiusEarth": 13.3
+        }
+      ]
+    },
+    {
+      "name": "GJ 682",
+      "raDeg": 264.2610245,
+      "decDeg": -44.3232519,
+      "distancePc": 5.00671,
+      "temperatureK": 3028,
+      "planets": [
+        {
+          "name": "GJ 682 b",
+          "periodDays": 17.478,
+          "semiMajorAu": 0.08,
+          "radiusEarth": 1.93
+        }
+      ]
+    },
+    {
+      "name": "GJ 3323",
+      "raDeg": 75.4868824,
+      "decDeg": -6.9485133,
+      "distancePc": 5.37484,
+      "temperatureK": 3159,
+      "planets": [
+        {
+          "name": "GJ 3323 b",
+          "periodDays": 5.3636,
+          "semiMajorAu": 0.03282,
+          "radiusEarth": 1.23
+        }
+      ]
+    },
+    {
+      "name": "GJ 251",
+      "raDeg": 103.7002499,
+      "decDeg": 33.2664632,
+      "distancePc": 5.58057,
+      "temperatureK": 3342,
+      "planets": [
+        {
+          "name": "GJ 251 b",
+          "periodDays": 14.237,
+          "semiMajorAu": 0.0808,
+          "radiusEarth": 1.79
+        }
+      ]
+    },
+    {
+      "name": "GJ 411",
+      "raDeg": 165.834471,
+      "decDeg": 35.972317,
+      "distancePc": 5.675773,
+      "temperatureK": 3719,
+      "planets": [
+        {
+          "name": "GJ 411 b",
+          "periodDays": 12.9394,
+          "semiMajorAu": 0.07879,
+          "radiusEarth": 1.45
+        }
+      ]
+    },
+    {
+      "name": "GJ 229",
+      "raDeg": 92.6435993,
+      "decDeg": -21.8677233,
+      "distancePc": 5.75624,
+      "temperatureK": 3564,
+      "planets": [
+        {
+          "name": "GJ 229 A c",
+          "periodDays": 121.93268,
+          "semiMajorAu": 0.384,
+          "radiusEarth": 2.87
+        },
+        {
+          "name": "GJ 229 b",
+          "periodDays": 579.47495,
+          "semiMajorAu": 1.086,
+          "radiusEarth": 3.97
+        }
+      ]
+    },
+    {
+      "name": "HD 180617",
+      "raDeg": 289.2277322,
+      "decDeg": 5.1631615,
+      "distancePc": 5.91059,
+      "temperatureK": 3534,
+      "planets": [
+        {
+          "name": "HD 180617 b",
+          "periodDays": 105.911,
+          "semiMajorAu": 0.343,
+          "radiusEarth": 3.53
+        }
+      ]
+    },
+    {
+      "name": "HD 20794",
+      "raDeg": 49.9997666,
+      "decDeg": -43.0666533,
+      "distancePc": 6.00278,
+      "temperatureK": 5368,
+      "planets": [
+        {
+          "name": "HD 20794 f",
+          "periodDays": 647.6,
+          "semiMajorAu": 1.3541,
+          "radiusEarth": 2.28
+        }
+      ]
+    },
+    {
+      "name": "LTT 1445 A",
+      "raDeg": 45.4624781,
+      "decDeg": -16.5944956,
+      "distancePc": 6.86929,
+      "temperatureK": 3562,
+      "planets": [
+        {
+          "name": "LTT 1445 A b",
+          "periodDays": 5.3587635,
+          "semiMajorAu": 0.0381,
+          "radiusEarth": 1.34
+        },
+        {
+          "name": "LTT 1445 A c",
+          "periodDays": 3.1239035,
+          "semiMajorAu": 0.02661,
+          "radiusEarth": 1.147
+        }
+      ]
+    },
+    {
+      "name": "GJ 4274",
+      "raDeg": 335.7805478,
+      "decDeg": -17.6104078,
+      "distancePc": 7.23556,
+      "temperatureK": 3228,
+      "planets": [
+        {
+          "name": "GJ 4274 c",
+          "periodDays": 69.57,
+          "semiMajorAu": 0.186,
+          "radiusEarth": 2.83
+        },
+        {
+          "name": "GJ 4274 b",
+          "periodDays": 1.6339,
+          "semiMajorAu": 0.0153,
+          "radiusEarth": 1.53
+        }
+      ]
+    },
+    {
+      "name": "GJ 667 C",
+      "raDeg": 259.7510609,
+      "decDeg": -34.9977651,
+      "distancePc": 7.24396,
+      "temperatureK": 3350,
+      "planets": [
+        {
+          "name": "GJ 667 C f",
+          "periodDays": 39.026,
+          "semiMajorAu": 0.156,
+          "radiusEarth": 1.45
+        },
+        {
+          "name": "GJ 667 C g",
+          "periodDays": 256.2,
+          "semiMajorAu": 0.549,
+          "radiusEarth": 1.99
+        }
+      ]
+    },
+    {
+      "name": "GJ 514",
+      "raDeg": 202.5040424,
+      "decDeg": 10.3725387,
+      "distancePc": 7.61778,
+      "temperatureK": 3728,
+      "planets": [
+        {
+          "name": "GJ 514 b",
+          "periodDays": 140.43,
+          "semiMajorAu": 0.422,
+          "radiusEarth": 2.13
+        }
+      ]
+    }
+  ]
+}
