@@ -11,18 +11,17 @@ These were decided by the owner and are not open for reinterpretation by contrib
 | Audience | Family first, then commercial. The game must be fun for the family playtest before any commercial work starts. |
 | Platform | Computer first. Desktop browsers are the target; phones and tablets come later. |
 | Setting | Real stars and habitability are flavour only. Real star names and positions set the scene, and habitability is an advisory score. Neither is a scientific simulation. |
-| Rules depth | A simple default mode plus an advanced mode. |
+| Rules depth | A simple default mode plus an advanced mode. The person who starts a game chooses the mode when setting that game up; it is a per-campaign choice, not a server-wide setting. |
 | Campaign length | A campaign lasts a few weeks. After that, play continues in seasons. |
 | Players | Two clans now, designed so more can be added. |
 | Missing players | AI fills in for players who are absent. |
-| Hosting | Cloud hosting with HTTPS and PostgreSQL. The provider is chosen at deploy time, so the build stays provider-neutral: one container image and a PostgreSQL connection string. Nothing is deployed without the owner's go-ahead. See [HOSTING.md](HOSTING.md). |
+| Hosting | Cloud hosting with HTTPS and PostgreSQL. The move to a cloud provider is **postponed** (owner, 2026-11-26); the provider will be chosen when hosting resumes, so the build stays provider-neutral: one container image and a PostgreSQL connection string. Nothing is deployed without the owner's go-ahead. When hosting does go live it starts a fresh campaign; the family playtest is not moved onto it. See [HOSTING.md](HOSTING.md). |
 | Identity | Personal accounts, replacing shared clan keys. Sign-in is email and password. Players join by an invitation link from the owner that is tied to a clan. Passwords are stored hashed. No outside sign-in or email service is used. |
 
 ### Open owner decisions
 
-- **What separates simple mode from advanced mode.** Undecided. Milestone 4 cannot start until the owner settles which rules belong to each mode.
-- **Which cloud provider.** Deliberately left until deploy time. Needed before milestone 2 can go live.
-- **Whether the running family playtest moves to the hosted server** or a fresh campaign starts there. The playtest and its save are untouched until the owner decides.
+- **Which rules belong to simple mode and which to advanced mode.** The owner has decided *who* chooses (the game starter, at setup). The exact rule list for each mode is still to be proposed and confirmed before milestone 4 is built.
+- **Which cloud provider.** Postponed along with the move to the cloud.
 
 ## Stars! clean-room rule
 

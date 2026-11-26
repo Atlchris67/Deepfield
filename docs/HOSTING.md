@@ -1,6 +1,6 @@
 # Hosting Deepfield
 
-**Status: prepared, not deployed.** Nothing in this document has been run against a cloud provider. No cloud
+**Status: prepared, not deployed. The move to a cloud provider is postponed by the owner (2026-11-26).** Nothing in this document has been run against a cloud provider. No cloud
 resource, DNS record or public address exists. The owner chooses the provider and gives the go-ahead before any
 of the "Deploy" steps are carried out.
 
@@ -88,11 +88,10 @@ either restore a backup, or empty the accounts row
 (`UPDATE deepfield_accounts SET state='{"Schema":1,"Accounts":[],"Invitations":[],"Sessions":[],"Resets":[]}'`),
 set `Owner__SetupKey` again, create the owner and re-invite the players. The campaign itself is untouched.
 
-## Moving the current family playtest to the host
+## The current family playtest
 
-The running local playtest uses clan keys and a save file. **This milestone does not touch it.** Moving that
-campaign into a hosted database is a separate, deliberate step (import the save into `deepfield_campaign` before
-first start) and needs the owner's go-ahead. Until then a hosted instance starts a fresh campaign.
+Owner decision (2026-11-26): the hosted server starts a **fresh campaign**. The running local playtest, with its
+clan keys and save file, is not moved and is not touched.
 
 ## Deploy (only after the owner's go-ahead)
 

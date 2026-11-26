@@ -7,9 +7,9 @@ The goals, owner decisions, Stars! clean-room rule and definition of version 1.0
 | # | Milestone | Status |
 | --- | --- | --- |
 | 1 | Protect the work and write down the plan | In review: draft pull request from `feature/habitability-colonization` |
-| 2 | Hosting and accounts: cloud hosting with HTTPS and PostgreSQL, personal accounts | Prepared, in review: draft pull request from `feature/hosting-accounts`. Accounts, invitations, HTTPS handling and PostgreSQL storage are built and verified locally against a disposable PostgreSQL server. **Not deployed**: the owner still chooses the provider and gives the go-ahead. See [HOSTING.md](HOSTING.md) |
+| 2 | Hosting and accounts: cloud hosting with HTTPS and PostgreSQL, personal accounts | Prepared, in review: draft pull request from `feature/hosting-accounts`. Accounts, invitations, HTTPS handling and PostgreSQL storage are built and verified locally against a disposable PostgreSQL server. **Not deployed, and going live is postponed by the owner** (2026-11-26); the provider is chosen when hosting resumes, and the hosted server will start a fresh campaign. See [HOSTING.md](HOSTING.md) |
 | 3 | Seasons and replayability: varied homeworlds and links, victory screen, new season | Not started |
-| 4 | Simple and advanced modes replacing the overlapping rule versions | Blocked on an owner decision: what separates the two modes |
+| 4 | Simple and advanced modes replacing the overlapping rule versions | Not started. Decided: the game starter picks the mode when setting up a game. The rule list for each mode still needs to be proposed and confirmed |
 | 5 | Fill-in AI for missing players | Not started. The current AI only plays the second clan |
 | 6 | Desktop polish and recorded verification | Not started |
 | 7 | Everything merged to `main` with CI | Not started. No CI workflow exists yet |
