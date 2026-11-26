@@ -1,3 +1,4 @@
+if (args.Contains("--accounts")) { await AccountChecks.Run(); return; }
 if (args.Contains("--habitability")) { HabitabilityChecks.Run(); return; }
 if (args.Contains("--recon")) { await ReconChecks.Run(); return; }
 if (args.Contains("--ship-design")) { ShipDesignChecks.Run(); return; }
@@ -14,3 +15,4 @@ PlanetChecks.Run();
 StarMapChecks.Run();
 await GeneratedCampaignChecks.Run();
 await RealCampaignChecks.Run();
+await AccountChecks.Run();
