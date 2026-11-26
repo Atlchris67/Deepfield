@@ -36,6 +36,7 @@ Set these as environment variables on the host. Never commit real values.
 | `Auth__AttemptsPerMinute` | No | Sign-in, setup, invitation and reset attempts allowed per client address per minute. Default `20`. |
 | `Https__Require` | No | Defaults to `true` with accounts outside Development: plain HTTP is redirected to HTTPS and HSTS is sent. |
 | `LegacyMap` | No | `true` starts a new campaign on the original fictional map instead of the real-star map. |
+| `MapSeed` | No | Fixes the layout of a **new** campaign. Without it a hosted campaign gets a random layout. `0` is the original fixed layout. Later seasons always get a new random layout. |
 | `EmpireAi`, `EconomyVersion`, `CombatVersion` | No | Rules for a **new** campaign, as described in the README. They do not change an existing campaign. |
 
 Generate a setup key in PowerShell:

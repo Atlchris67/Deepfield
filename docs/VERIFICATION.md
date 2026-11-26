@@ -1,5 +1,19 @@
 # Verification — 2026-10-14, Piedmont
 
+## Seasons and replayability (milestone 3) - 2026-11-26
+
+Branch `feature/seasons`, stacked on `feature/hosting-accounts`. No deployment. The running playtest, its keys and its save were not touched; tests used throwaway saves under `test-results/` or the system temp folder, loopback ports 5096 to 5098, and the same disposable embedded PostgreSQL as milestone 2.
+
+- `dotnet build Deepfield.sln`: 0 warnings, 0 errors (the first build after a frontend change still fails once in static web assets and passes when repeated).
+- `Deepfield.Checks` with `DEEPFIELD_TEST_POSTGRES` set: exit code 0, **295 checks passed**: the 266 from milestone 2 plus **29 season checks**.
+- Season checks cover: map seed 0 reproduces the original layout link for link (pinned from a save written before this change); 300 seeds are repeatable, fully connected, keep the same real stars, and reject tampered or mismatched snapshots; homeworlds are always at least 3 jumps apart, neighbouring-system counts differ by at most 1 and nearer territory by at most 4 of 24 systems; victory records the end time and shows both clans the final standings; the next season keeps clans, AI seats, clan channels and rule choices and resets everything else; repeated or unconfirmed requests are refused; history keeps 50 seasons; saves from before seasons load as season 1; an original-map campaign continues into a real-star season; a failed start leaves the save unchanged.
+- Measured variety across seeds 1 to 300: **190 distinct homeworld pairs, all 24 systems used as a homeworld, 300 distinct link layouts**. Separation ranged from 3 to 9 jumps.
+- New `npm run test:seasons` (`web/tests/seasons-api.mjs`): **24 API and browser checks** with a real server and Microsoft Edge: victory and defeat screens with standings, results banner, owner-only start control (a player gets 403), season 2 on a different map with one homeworld each, history for both clans, clan channel carried over and still private, repeated request refused, ending early needs an explicit tick, restart persistence, and clan-key development behaviour (original map by default, `MapSeed`, season control only for a local test session).
+- The season in that test was decided by editing the throwaway save while the server was stopped, not by playing to a win. Reaching victory through real turns is covered only at the rules level.
+- All other web suites pass unchanged: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, star-map-component 13, real-sky-rotation-component 25, material-reservations 19, real-sky-projection, system-panel-component, planet-scale, planet-api 14, real-campaign-api 14, generated-campaign-api 19, smoke 73, accounts 30 (37 with the hosted PostgreSQL configuration).
+
+Not verified: play balance of seeded maps beyond the structural fairness measures above (no simulated or human games were played on them); the victory screen on phones; anything in a real hosted environment.
+
 ## Hosting and accounts (milestone 2, prepared only) - 2026-11-26
 
 Branch `feature/hosting-accounts`. Nothing was deployed. No cloud resource, DNS record or public address was created. The running playtest, its keys and its save were not touched; every test used throwaway saves under `test-results/` or the system temp folder, and loopback ports 5097 to 5099.

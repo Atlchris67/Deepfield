@@ -22,6 +22,8 @@ These were decided by the owner and are not open for reinterpretation by contrib
 
 - **Which rules belong to simple mode and which to advanced mode.** The owner has decided *who* chooses (the game starter, at setup). The exact rule list for each mode is still to be proposed and confirmed before milestone 4 is built.
 - **Which cloud provider.** Postponed along with the move to the cloud.
+- **What carries over between seasons.** Built so far ([SEASONS.md](SEASONS.md)): the clans, their channels and the record of past seasons carry over; everything else starts fresh. The owner has not yet confirmed this, or whether anything should be earned from one season to the next.
+- **Whether a season has a time limit.** A season currently ends only when a clan reaches the victory condition. If "a few weeks" should be guaranteed, a turn limit with a points decision is needed; that is a rules decision for the owner.
 
 ## Stars! clean-room rule
 

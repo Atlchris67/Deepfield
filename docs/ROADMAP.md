@@ -8,7 +8,7 @@ The goals, owner decisions, Stars! clean-room rule and definition of version 1.0
 | --- | --- | --- |
 | 1 | Protect the work and write down the plan | In review: draft pull request from `feature/habitability-colonization` |
 | 2 | Hosting and accounts: cloud hosting with HTTPS and PostgreSQL, personal accounts | Prepared, in review: draft pull request from `feature/hosting-accounts`. Accounts, invitations, HTTPS handling and PostgreSQL storage are built and verified locally against a disposable PostgreSQL server. **Not deployed, and going live is postponed by the owner** (2026-11-26); the provider is chosen when hosting resumes, and the hosted server will start a fresh campaign. See [HOSTING.md](HOSTING.md) |
-| 3 | Seasons and replayability: varied homeworlds and links, victory screen, new season | Not started |
+| 3 | Seasons and replayability: varied homeworlds and links, victory screen, new season | In review: draft pull request from `feature/seasons`. Seeded maps with varied links and evenly matched homeworlds, a victory screen with final standings, a season record, and an owner control that starts the next season. See [SEASONS.md](SEASONS.md). Two owner questions are open: what carries over, and whether a season has a time limit |
 | 4 | Simple and advanced modes replacing the overlapping rule versions | Not started. Decided: the game starter picks the mode when setting up a game. The rule list for each mode still needs to be proposed and confirmed |
 | 5 | Fill-in AI for missing players | Not started. The current AI only plays the second clan |
 | 6 | Desktop polish and recorded verification | Not started |
