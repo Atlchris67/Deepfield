@@ -1,0 +1,28 @@
+.seasonDialog{width:min(640px,calc(100vw - 24px))}
+.seasonDialog.victory{border-color:#8ce6c4;box-shadow:0 0 0 1px #8ce6c455,0 24px 90px #0008}
+.seasonDialog.defeat{border-color:#8a6a70}
+.seasonBody{padding:26px}
+.seasonBody .quiet{width:auto}
+.seasonBody h2{font-size:clamp(34px,7vw,56px);line-height:1.05;margin:6px 0 10px}
+.seasonDialog.victory h2{color:#a4ebc9}
+.seasonDialog.defeat h2{color:#e6c3c0}
+.seasonBody h3{margin:24px 0 10px;font-size:14px;letter-spacing:1px;color:#a8d8c6}
+.seasonLead{font-size:16px;max-width:52ch}
+.seasonMeta{color:#8fa6aa;font-size:13px}
+.standings{width:100%;border-collapse:collapse;margin:18px 0 8px;font-variant-numeric:tabular-nums}
+.standings caption{text-align:left;font-size:10px;letter-spacing:2px;color:#a8d8c6;padding-bottom:8px;text-transform:uppercase}
+.standings th,.standings td{padding:9px 8px;border-top:1px solid #263941;text-align:right}
+.standings th:first-child{text-align:left}
+.standings thead th{font-size:12px;color:#a8bdbf;font-weight:500;border-top:0}
+.standings tr.won th,.standings tr.won td{color:#a4ebc9;font-weight:650}
+.standings .you{color:#8fa6aa;font-weight:400}
+.nextSeason{margin-top:18px;padding:14px;border:1px solid #263941;border-radius:7px;background:#0d1820}
+.nextSeason:empty{display:none}
+.nextSeason p{margin:0 0 12px;font-size:13px}
+.nextSeason p:last-child{margin-bottom:0}
+.endEarly{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#e1eceb}
+.endEarly input{width:auto;margin:0}
+.seasonHistory{list-style:none;margin:0;padding:0}
+.seasonHistory li{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:9px 0;border-top:1px solid #263941}
+.seasonHistory small{grid-column:1/-1;color:#8fa6aa}
+.banner button{width:auto;margin-left:12px}
