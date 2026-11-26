@@ -1,11 +1,29 @@
-# Development after the first playtest
+# Roadmap
+
+The goals, owner decisions, Stars! clean-room rule and definition of version 1.0 are in [VISION.md](VISION.md). This page tracks progress against them.
+
+## Milestones to version 1.0
+
+| # | Milestone | Status |
+| --- | --- | --- |
+| 1 | Protect the work and write down the plan | In review: draft pull request from `feature/habitability-colonization` |
+| 2 | Hosting and accounts: cloud hosting with HTTPS and PostgreSQL, personal accounts | Not started. PostgreSQL storage exists but is unverified against a real server |
+| 3 | Seasons and replayability: varied homeworlds and links, victory screen, new season | Not started |
+| 4 | Simple and advanced modes replacing the overlapping rule versions | Blocked on an owner decision: what separates the two modes |
+| 5 | Fill-in AI for missing players | Not started. The current AI only plays the second clan |
+| 6 | Desktop polish and recorded verification | Not started |
+| 7 | Everything merged to `main` with CI | Not started. No CI workflow exists yet |
+
+The sections below are the earlier increment notes, kept as history.
+
+## Development after the first playtest
 
 The running playtest and its save remain untouched. Development uses a separate worktree, test saves and loopback port 5097. No merge or deployment is part of these increments.
 
 ## Increment 1: scouts and shared ISR
 
 - Existing 5-credit combat/colony ships retain their behavior. Dedicated scouts cost 3 credits, are unarmed, cannot colonize or participate in ordinary fleet movement, and fly one-turn round trips from owned colonies to adjacent charted systems. Build first, fly on a later turn. One scout per mission; grounded scouts are lost when their colony falls.
-- Distant / close / deep mission return targets start at 90 / 65 / 35 percent. These are explicit tunable campaign settings, not final balance. They currently do not depend on hidden defenses; UI risk estimates are the same public settings the engine uses.
+- New campaigns start with distant scouts always returning (100%). Campaigns saved before this change keep their stored rate (originally 90%), so no existing save changes. Close and deep return targets default to 65% and 35%; all three are stored per-campaign settings. None of these odds depend on hidden defenses, and the UI shows the same effective rates the engine uses.
 - All missions observe the simultaneous-arrival snapshot before combat. Distant returns reveal contact/ownership; close returns add estimated combat-fleet bands; deep returns add exact combat ships, scouts and collectors. A destroyed scout transmits only a positive contact signal if it encountered one, otherwise unconfirmed contact. Full reports require escape.
 - Stable versioned HMAC-SHA256 sampling uses separately persisted private 256-bit game entropy plus campaign seed, turn, clan, route, mission and same-route occurrence. Public map seeds cannot predict outcomes. Request IDs, submission retries, unrelated order placement and wall-clock resolution time do not influence outcomes. Seeds stay server-side.
 - Intelligence is per-clan, persisted, stamped with turn/time/phase and explicitly historical. It is never substituted for live vision. Keep 200 reports; no historical intel is fabricated during migration.
