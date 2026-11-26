@@ -66,6 +66,11 @@ public class Game
     public int LogisticsVersion { get; set; }
     // Zero is the original saved deposit/yield model. New real campaigns use version one.
     public int MaterialsVersion { get; set; }
+    // Seasons: saves from before seasons existed read as season 1 with no history.
+    public int Season { get; set; } = 1;
+    public DateTimeOffset? Started { get; set; }
+    public DateTimeOffset? Ended { get; set; }
+    public List<SeasonRecord> History { get; set; } = [];
 }
 public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null, int? Defense = null, int[][]? Fleets = null, PlanetStats? Statistics = null,
     int? Mines = null, int? SettlementSize = null, int? HomePlanetId = null, int[]? MaterialYield = null,
@@ -75,7 +80,8 @@ public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, str
     List<Intelligence>? Intelligence = null, ReconRates? ReconRates = null, int EconomyVersion = 0, int NextIncome = 0, int CombatVersion = 0,
     IReadOnlyList<StarMapLink>? Links = null, int? MapWidth = null, int? MapHeight = null,
     int? RealCatalogVersion = null, IReadOnlyList<CatalogSystem>? RealSystems = null, int[]? Materials = null,
-    int IndustrialFocus = 0, int LogisticsVersion = 0, string[]? ShipDesigns = null);
+    int IndustrialFocus = 0, int LogisticsVersion = 0, string[]? ShipDesigns = null,
+    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null);
 public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
@@ -84,7 +90,7 @@ public static class Rules
     {
         if(economyVersion is not (0 or 1)) throw new RuleException("Unknown economy version.");
         if(combatVersion is not (0 or 1)) throw new RuleException("Unknown combat version.");
-        var g = new Game { Seed = seed, EconomyVersion = economyVersion, ReconRates = ReconRates.NewCampaign, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
+        var g = new Game { Seed = seed, Started = now, EconomyVersion = economyVersion, ReconRates = ReconRates.NewCampaign, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
         g.ReconEntropy = reconEntropy ?? Recon.NewEntropy();
         Recon.ValidateEntropy(g.ReconEntropy);
         // Legacy topology: retain saved identities and rule-compatible IDs. Fresh Development games use RealStarMap.
@@ -106,7 +112,7 @@ public static class Rules
             throw new RuleException("Clan industrial focus must be between -2 and 2 in a real-system campaign.");
         if (map.GeneratorVersion != StarMapGenerator.CurrentVersion || map.Settings.PlayerCount != 2 || map.Settings.SystemCount < 4)
             throw new RuleException("Playable campaigns require a current two-player star map with at least four systems.");
-        var expected = map.RealCatalogVersion is null ? StarMapGenerator.Generate(map.Seed, map.Settings) : RealStarMap.Generate();
+        var expected = map.RealCatalogVersion is null ? StarMapGenerator.Generate(map.Seed, map.Settings) : RealStarMap.Generate(map.Seed);
         if (!System.Text.Json.JsonSerializer.Serialize(expected).Equals(System.Text.Json.JsonSerializer.Serialize(map), StringComparison.Ordinal))
             throw new RuleException("Star map snapshot does not match its generator settings.");
         // Initialize typed fleets only after replacing the legacy layout with this map.
@@ -166,7 +172,8 @@ public static class Rules
             RealCatalogVersion: g.GeneratedMap?.RealCatalogVersion,
             RealSystems: g.GeneratedMap?.RealSystems?.Select(host => host with { Planets = c.Known.Contains(host.Id) ? host.Planets : [] }).ToArray(),
             Materials: c.Materials?.ToArray(), IndustrialFocus: c.IndustrialFocus, LogisticsVersion: g.LogisticsVersion,
-            ShipDesigns: [..c.ShipDesigns]);
+            ShipDesigns: [..c.ShipDesigns],
+            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History]);
     }
     public static void Validate(View v, List<Order> orders)
     {
@@ -444,7 +451,7 @@ public static class Rules
             c.Intelligence=c.Intelligence.Take(200).ToList();
         }
         // Simultaneous victory is a shared victory, represented by team 2.
-        if(winners.Count>0) g.Winner=winners.Count==2 ? 2 : winners[0];
+        if(winners.Count>0) { g.Winner=winners.Count==2 ? 2 : winners[0]; g.Ended=now; }
         g.Turn++; g.Deadline=now.AddDays(1); return true;
     }
 }

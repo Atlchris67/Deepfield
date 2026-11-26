@@ -17,10 +17,14 @@ var keys = new[]{builder.Configuration["Teams:0:Key"],builder.Configuration["Tea
 if(authMode=="keys" && (keys.Any(k=>string.IsNullOrWhiteSpace(k) || k.Length<24) || keys[0]==keys[1]))
     throw new InvalidOperationException("Set distinct Teams__0__Key and Teams__1__Key environment values (at least 24 characters).");
 var localTest=LocalTurns.Enabled(builder.Environment.IsDevelopment(),builder.Configuration.GetValue<bool>("IsolatedPreview"),builder.Configuration.GetValue<bool>("LocalTest"));
+// Map seed 0 is the original fixed layout. A hosted campaign with accounts gets a random layout unless MapSeed is set;
+// local development keeps the fixed layout unless MapSeed is set, so existing tests and habits are unchanged.
+int RandomMapSeed()=>RandomNumberGenerator.GetInt32(1,int.MaxValue);
+int NewMapSeed()=>builder.Configuration.GetValue<int?>("MapSeed")??(authMode=="accounts"?RandomMapSeed():0);
 // A newly created hosted campaign with personal accounts starts on the real-star map unless LegacyMap=true.
 // An existing database row is never replaced, so this affects only a campaign that does not exist yet.
 Game NewGame()=>(string.IsNullOrEmpty(connection) && builder.Environment.IsDevelopment()) || (authMode=="accounts" && !builder.Configuration.GetValue("LegacyMap",false))
-    ? Rules.CreateFromMap(RealStarMap.Generate(),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0))
+    ? Rules.CreateFromMap(RealStarMap.Generate(NewMapSeed()),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0))
     : Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0));
 IGameStore store;
 GeneratedCampaigns? generatedCampaigns = null;
@@ -103,6 +107,7 @@ if(access is not null) access.Map(app);
 else app.MapGet("/api/public/state",()=>Results.Ok(new{mode="keys"}));
 int Team(HttpContext c)=>(int)c.Items["team"]!;
 bool CanAccelerate(HttpContext c)=>LocalTurns.Allowed(localTest,c);
+bool CanStartSeason(HttpContext c)=>c.Items["account"] is Account{Owner:true} || (access is null && CanAccelerate(c));
 IGameStore CampaignStore(HttpContext c)
 {
     var id=c.Request.Headers["X-Deepfield-Campaign"].ToString();
@@ -112,12 +117,19 @@ IResult PreviewStarMap(HttpContext c,StarMapPreviewRequest body)
 {
     if(!CanAccelerate(c)) return Results.NotFound();
     if(!body.Real) throw new RuleException("New campaigns use cataloged real star systems. Existing fictional campaigns remain available from their saved files.");
-    return Results.Ok(RealStarMap.Generate());
+    return Results.Ok(RealStarMap.Generate(body.Seed));
 }
 app.MapGet("/health",()=>Results.Ok(new{status="ok"}));
 // Readiness also proves the campaign store (and so the database) answers.
 app.MapGet("/health/ready",async()=>Results.Ok(new{status="ok",turn=await store.Execute(g=>g.Turn,false)}));
-app.MapGet("/api/campaign",(Delegate)(Func<HttpContext,Task<IResult>>)(async c=>Results.Ok(new{campaign=await CampaignStore(c).Execute(g=>Rules.Observe(g,Team(c)),false),localTest=CanAccelerate(c)})));
+app.MapGet("/api/campaign",(Delegate)(Func<HttpContext,Task<IResult>>)(async c=>Results.Ok(new{campaign=await CampaignStore(c).Execute(g=>Rules.Observe(g,Team(c)),false),localTest=CanAccelerate(c),seasonControl=CanStartSeason(c)})));
+// Starting the next season replaces the map for everyone, so it belongs to the campaign owner
+// (or, with clan keys, to a local test session). In accounts mode /api/admin is already owner-only.
+app.MapPost("/api/admin/season",async(HttpContext c,NextSeason body)=>
+{
+    if(!CanStartSeason(c)) return Results.NotFound();
+    return Results.Ok(new{season=await CampaignStore(c).Execute(g=>{Seasons.StartNext(g,body.Season,body.MapSeed??RandomMapSeed(),DateTimeOffset.UtcNow,body.EndEarly);return g.Season;})});
+});
 app.MapPut("/api/orders",async(HttpContext c,Submission body)=>Results.Ok(new{revision=await CampaignStore(c).Execute(g=>
 {
     if(g.Clans[Team(c)].Ai) throw new RuleException("This clan is AI-controlled.");
@@ -144,7 +156,7 @@ app.MapPost("/api/local/campaigns",async(HttpContext c,StartGeneratedCampaign bo
     if(!CanAccelerate(c) || generatedCampaigns is null) return Results.NotFound();
     if(body.Preview is null || body.GeneratorVersion!=StarMapGenerator.CurrentVersion) throw new RuleException("Preview a current star map before starting a campaign.");
     if(!body.Preview.Real) throw new RuleException("New campaigns use cataloged real star systems. Existing fictional campaigns remain available from their saved files.");
-    var map=RealStarMap.Generate();
+    var map=RealStarMap.Generate(body.Preview.Seed);
     var game=await generatedCampaigns.Start(body.Id,map,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),body.CombatVersion??builder.Configuration.GetValue("CombatVersion",0),body.LogisticsVersion,body.IndustrialFocus);
     return Results.Ok(new {id=body.Id,campaign=Rules.Observe(game,Team(c))});
 });
@@ -153,5 +165,6 @@ app.MapFallbackToFile("index.html");
 app.Run();
 public record BoardPost(string Id,string? Author,string Text);
 public record Advance(int Turn);
+public record NextSeason(int Season,bool EndEarly=false,int? MapSeed=null);
 public record StarMapPreviewRequest(int Seed,int SystemCount,int Width,int Height,int MinimumSeparation,int NearestNeighborLinks,int PlayerCount,bool Real=false);
 public record StartGeneratedCampaign(string Id,int GeneratorVersion,StarMapPreviewRequest? Preview,int LogisticsVersion=0,int[]? IndustrialFocus=null,int? CombatVersion=null);
