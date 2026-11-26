@@ -23,6 +23,8 @@ try{
  await server.listen();browser=await chromium.launch({channel:process.env.DEEPFIELD_TEST_BROWSER??'msedge',headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname;
+  // The page first asks which sign-in the server uses; these fixtures model the clan-key server.
+  if(path==='/api/public/state'){await route.fulfill({json:{mode:'keys'}});return;}
   if(path==='/api/campaign'){gets++;const json={campaign:structuredClone(state),localTest:false};if(hold){waiting.push(()=>route.fulfill({json}));return;}await route.fulfill({json});return;}
   if(path==='/api/orders'){const body=route.request().postDataJSON();puts.push(body);if(reject){await route.abort();return;}state={...state,orders:body.orders,revision:state.revision+1};await route.fulfill({json:{revision:state.revision}});return;}
   throw Error('Unexpected request '+path);

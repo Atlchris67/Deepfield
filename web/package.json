@@ -17,6 +17,7 @@
     "test:planet-ui": "node tests/planet-component.mjs",
     "test:planet-api": "node tests/planet-api.mjs",
     "test:smoke": "node tests/smoke.mjs",
+    "test:accounts": "node tests/accounts-api.mjs",
     "test:star-map-ui": "node tests/star-map-component.mjs",
     "test:real-systems-ui": "node tests/real-sky-rotation-component.mjs",
     "test:real-sky-projection": "node --experimental-strip-types tests/real-sky-projection.mjs",

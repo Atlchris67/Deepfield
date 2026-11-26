@@ -11,6 +11,8 @@ try{
  const page=await browser.newPage();const states=[campaign(),campaign(1)],puts=[],reads=[],putTeams=[];let pending=[];let putMode='hold',readMode='normal',localCapability=false;const advances=[];let advanceMode='success';
  await page.route('**/api/**',async route=>{
   const request=route.request(),path=new URL(request.url()).pathname,team=request.headers().authorization?.includes('ember')?1:0;
+  // The page first asks which sign-in the server uses; these fixtures model the clan-key server.
+  if(path==='/api/public/state'){await route.fulfill({json:{mode:'keys'}});return;}
   if(path==='/api/campaign'){
    reads.push(team);
    if(readMode==='hold'){pending.push(()=>route.fulfill({json:{campaign:states[team],localTest:localCapability}}));return;}

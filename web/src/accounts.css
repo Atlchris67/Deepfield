@@ -1,0 +1,21 @@
+.accountHint{display:block;margin:-6px 0 14px;color:#8fa6aa}
+.login .quiet{width:auto;margin-top:6px}
+.accountName{color:#a8bdbf;font-size:13px}
+.playersDialog{width:min(720px,calc(100vw - 24px))}
+.playersBody{padding:22px}
+.playersBody h3{margin:22px 0 10px;font-size:14px;letter-spacing:1px;color:#a8d8c6}
+.playersBody .quiet{width:auto}
+.inviteForm{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;align-items:end}
+.inviteForm button{grid-column:1/-1}
+.shareLink{margin:16px 0;padding:14px;border:1px solid #8ce6c4;border-radius:7px;background:#12261f}
+.shareLink p{margin:6px 0;font-size:13px}
+.shareLink input{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.playerList{list-style:none;margin:0;padding:0}
+.playerList li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid #263941}
+.playerList li>div:first-child{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
+.playerList label{flex:0 1 190px}
+.playerList select{margin:4px 0 0}
+.playerActions{display:flex;gap:4px}
+.playerTag{margin-left:8px;padding:2px 7px;border-radius:9px;background:#1f3a33;color:#a4ebc9;font-size:11px}
+.playerTag.off{background:#44272d;color:#ffc2bd}
+@media(max-width:560px){.inviteForm{grid-template-columns:1fr}.playersBody{padding:16px}}
