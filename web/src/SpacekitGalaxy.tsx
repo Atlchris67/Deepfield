@@ -11,9 +11,8 @@ const colors:Record<string,number>={own:0x69c7ed,enemy:0xf97878,'reported-enemy'
 function starTexture(ring:boolean){
  const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
  const context=canvas.getContext('2d')!;
- context.beginPath();context.moveTo(32,3);context.lineTo(38,26);context.lineTo(61,32);context.lineTo(38,38);context.lineTo(32,61);context.lineTo(26,38);context.lineTo(3,32);context.lineTo(26,26);context.closePath();
- if(ring){context.strokeStyle='#fff';context.lineWidth=4;context.lineJoin='round';context.stroke();}
- else {context.shadowColor='#fff';context.shadowBlur=8;context.fillStyle='#fff';context.fill();}
+ if(ring){context.beginPath();context.arc(32,32,15,0,Math.PI*2);context.strokeStyle='#fff';context.lineWidth=3;context.stroke();}
+ else {const glow=context.createRadialGradient(32,32,1,32,32,30);glow.addColorStop(0,'#fff');glow.addColorStop(.12,'#fff');glow.addColorStop(.28,'#ffffffb0');glow.addColorStop(1,'#ffffff00');context.fillStyle=glow;context.fillRect(0,0,64,64);}
  return new THREE.CanvasTexture(canvas);
 }
 
@@ -48,7 +47,7 @@ export function SpacekitGalaxy({items,links,selected,onActivate,embedded}:Props)
    return()=>{cancelAnimationFrame(frame);observer?.disconnect();if(sim){sim.getViewer().get3jsCameraControls().dispose();clearScene();for(const texture of textures.current)texture.dispose();textures.current=[];sim.stop();(sim as unknown as {renderEnabled:boolean}).renderEnabled=false;sim.getRenderer().dispose();target.replaceChildren();}simRef.current=null;};
   },[]);
  useEffect(()=>{const sim=simRef.current;if(!sim)return;clearScene();const world=sim.getScene(),[filled,hollow]=textures.current;
-  for(const item of items){const material=new THREE.SpriteMaterial({map:item.kind==='unknown'?hollow:filled,color:colors[item.kind]??colors.reference,transparent:true,depthWrite:false});const sprite=new THREE.Sprite(material);sprite.position.set(...item.position);sprite.scale.set(.62,.62,1);sprite.name=item.key;world.add(sprite);objects.current.push(sprite);materials.current.push(material);}
+  for(const item of items){const material=new THREE.SpriteMaterial({map:item.kind==='unknown'?hollow:filled,color:colors[item.kind]??colors.reference,transparent:true,depthWrite:false,opacity:item.kind==='reference'?.62:1});const sprite=new THREE.Sprite(material);sprite.position.set(...item.position);sprite.scale.set(item.kind==='unknown'?.5:.82,item.kind==='unknown'?.5:.82,1);sprite.name=item.key;world.add(sprite);objects.current.push(sprite);materials.current.push(material);}
   const vertices=routeVertices(items,links).map(position=>new THREE.Vector3(...position));
   if(container.current)container.current.dataset.routeCount=String(vertices.length/2);
   if(vertices.length){const geometry=new THREE.BufferGeometry().setFromPoints(vertices),material=new THREE.LineBasicMaterial({color:0x68a5a8,transparent:true,opacity:.24,depthWrite:false});const routes=new THREE.LineSegments(geometry,material);routes.name='Saved one-turn jump links';world.add(routes);objects.current.push(routes);geometries.current.push(geometry);materials.current.push(material);}
@@ -64,10 +63,12 @@ export function SpacekitGalaxy({items,links,selected,onActivate,embedded}:Props)
    onPointerDown={event=>{if(event.button!==0)return;const parts=cameraParts();if(!parts)return;pointer.current={id:event.pointerId,x:event.clientX,y:event.clientY,moved:false,position:parts.camera.position.clone().sub(parts.controls.target)};event.currentTarget.setPointerCapture(event.pointerId);}}
    onPointerMove={rotateMarker} onPointerUp={event=>{if(pointer.current?.id!==event.pointerId)return;pointer.current=null;if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);}}
    onPointerCancel={()=>{pointer.current=null;}}/>
-  <div className="spacekitGalaxyLabels">{items.map(item=><button key={item.key} ref={node=>{if(node)labels.current.set(item.key,node);else labels.current.delete(item.key);}} type="button" data-system={item.key} className={'realStar '+item.kind+(item.key===selected?' active':'')} title={item.title} aria-label={`Show system details for ${item.name}`} aria-pressed={item.key===selected}
+  <div className="spacekitGalaxyLabels">{items.map(item=><button key={item.key} ref={node=>{if(node)labels.current.set(item.key,node);else labels.current.delete(item.key);}} type="button" data-system={item.key} className={'realStar '+item.kind+(item.key===selected?' active':'')} title={item.title} aria-label={`Show system details for ${item.name}`} aria-pressed={item.key===selected} aria-description={item.kind==="reported-enemy"?"Historical enemy report; current ownership unconfirmed.":undefined}
    onPointerDown={event=>{if(event.button!==0)return;const parts=cameraParts();if(!parts)return;pointer.current={id:event.pointerId,x:event.clientX,y:event.clientY,moved:false,position:parts.camera.position.clone().sub(parts.controls.target)};event.currentTarget.setPointerCapture(event.pointerId);}}
    onPointerMove={rotateMarker} onPointerUp={event=>{if(pointer.current?.id!==event.pointerId)return;dragged.current=pointer.current.moved;pointer.current=null;if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);setTimeout(()=>{dragged.current=false;},0);}}
    onPointerCancel={()=>{pointer.current=null;}} onClick={()=>{if(!dragged.current)onActivate(item.key);}}><span className="realStarDot" aria-hidden="true">{item.kind==='unknown'?'✧':'✦'}</span><span className="realStarName">{item.name}</span></button>)}</div>
+  <div className="galaxyReadout" aria-hidden="true"><strong>LOCAL VOLUME</strong><span>Drag to orbit · Scroll to zoom</span></div>
+  <div className="galaxyLegend" role="group" aria-label="Galaxy marker legend"><span className="legendOwn">Owned</span><span className="legendEnemy">Enemy (current)</span><span className="legendHistorical">Enemy (last seen)</span><span className="legendUnknown">Unknown</span><span className="legendReference">Reference</span></div>
   {error&&<p className="spacekitGalaxyError" role="alert">Spacekit galaxy view unavailable: {error}</p>}
   <div className="realSkyControls" aria-label="Real sky controls"><button type="button" aria-label="Zoom real sky out" onClick={()=>moveZoom(1.25)}>-</button><span>{Math.round(zoom*100)}%</span><button type="button" aria-label="Zoom real sky in" onClick={()=>moveZoom(.8)}>+</button><button type="button" onClick={reset}>Reset sky</button>{embedded&&<button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?'Close expanded sky':'Expand sky'}</button>}</div>
  </div>;

@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { hulls, available, availableScouts, linked, emptySelection, selectionAtSource, validateExpedition, type Order, type Star, type StarLink } from './fleetSelection';
 
-export function ExpeditionDialog({stars,team,typed,draft,initialSource,initialTarget,links,onClose,onAdd}:{stars:Star[];team:number;typed:boolean;draft:Order[];initialSource:number;initialTarget:number;links?:StarLink[]|null;onClose:()=>void;onAdd:(orders:Order[],signal:AbortSignal)=>Promise<void>}){
+export function ExpeditionDialog({stars,team,typed,draft,initialSource,initialTarget,initialColony=false,links,onClose,onAdd}:{stars:Star[];team:number;typed:boolean;draft:Order[];initialSource:number;initialTarget:number;initialColony?:boolean;links?:StarLink[]|null;onClose:()=>void;onAdd:(orders:Order[],signal:AbortSignal)=>Promise<void>}){
  const dialog=useRef<HTMLDialogElement>(null),sending=useRef(false),abort=useRef(new AbortController());
- const [source,setSource]=useState(initialSource),[target,setTarget]=useState(initialTarget),[counts,setCounts]=useState<string[]>(emptySelection(typed));
+ const [source,setSource]=useState(initialSource),[target,setTarget]=useState(initialTarget),[counts,setCounts]=useState<string[]>(()=>{
+  const selection=emptySelection(typed),origin=stars.find(star=>star.id===initialSource);
+  if(initialColony&&origin&&available(origin,team,typed,0,draft)>=2)selection[0]='2';
+  return selection;
+ });
  const [scouts,setScouts]=useState('0');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const closeRef=useRef(onClose);closeRef.current=onClose;
@@ -23,7 +27,7 @@ export function ExpeditionDialog({stars,team,typed,draft,initialSource,initialTa
   finally{sending.current=false;setBusy(false);}
  }
  return <dialog ref={dialog} className="expeditionDialog" aria-labelledby="expedition-title" onCancel={e=>{e.preventDefault();onClose();}}>
-  <h2 id="expedition-title">Select expedition fleet</h2><p>Choose existing ships to send. Available counts subtract every movement order already in your draft; newly built ships move next turn.</p>
+  <h2 id="expedition-title">Select expedition fleet</h2><p>Choose existing ships to send. Available counts subtract every movement order already in your draft; newly built ships move next turn.</p>{initialColony&&<p className="hint">Colony expedition: review this route and fleet before adding it to your draft. Founding is not guaranteed.</p>}
   <div className="dialogScroll"><fieldset disabled={busy}><label>Expedition source<select value={source} onChange={e=>{const id=Number(e.target.value);const reset=selectionAtSource(stars,id,typed,links);setSource(id);setTarget(reset.target);setCounts(reset.counts);setScouts('0');setError('');}}>{stars.filter(s=>s.visible&&(s.ships?.[team]??0)>0).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
   <label>Expedition destination<select value={target} onChange={e=>setTarget(Number(e.target.value))}><option value={-1}>Select linked system</option>{stars.filter(s=>s.known&&linked(source,s.id,links)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
   <table><thead><tr><th>Ship type</th><th>Available</th><th>Send</th></tr></thead><tbody>{rows.map((row,i)=>{const count=available(star,team,typed,i,draft);return <tr key={row.id}><th scope="row">{row.label}</th><td data-testid={'available-'+row.id}>{count}</td><td><input aria-label={'Send '+row.label} type="number" min="0" max={Math.min(100,count)} step="1" value={counts[i]} onChange={e=>setCounts(old=>old.map((n,j)=>j===i?e.target.value:n))}/>{validation.issues.filter(issue=>issue.row===i).map(issue=><small key={issue.code} className="error">{issue.message}</small>)}</td></tr>;})}</tbody></table>

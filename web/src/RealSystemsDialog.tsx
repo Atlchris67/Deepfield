@@ -1,13 +1,15 @@
 import {useEffect,useId,useMemo,useRef,useState} from 'react';
+import './visual-pass.css';
 import {Simulation,Ephem,THREE} from 'spacekit.js';
 import snapshot from './realSystems.json';
 import type {CatalogSystem} from './StarMapSetupDialog';
 import {hulls,type Star,type StarLink} from './fleetSelection';
-import type {Intel} from './IntelligencePanel';
+import {latestMaterialSurvey,type Intel} from './IntelligencePanel';
 import {materialNames} from './MaterialPanel';
 import {campaignVector,catalogVector} from './realSkyProjection';
 import {SpacekitGalaxy} from './SpacekitGalaxy';
 import {PlanetDetail} from './PlanetDetail';
+import {illustrativeSurface} from './illustrativeSurface';
 import type {GalaxyItem} from './galaxySceneData';
 
 type Host={id:number;name:string;raDeg:number;decDeg:number;distancePc:number;temperatureK:number|null;planets:Array<{name:string;periodDays:number;semiMajorAu:number;radiusEarth:number|null}>;starId?:number;reference:boolean;astronomical:boolean};
@@ -18,11 +20,19 @@ const measured=(value:number|null|undefined)=>value==null?'Unknown':String(value
 
 export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence,onSelect,onOpenStatistics,embedded=false,fictional=false,mapWidth=100,mapHeight=100}:{onClose:()=>void;catalog?:CatalogSystem[]|null;stars?:Star[];links?:StarLink[]|null;team?:number;intelligence?:Intel[];onSelect?:(id:number)=>void;onOpenStatistics?:(id:number)=>void;embedded?:boolean;fictional?:boolean;mapWidth?:number;mapHeight?:number}){
  const dialog=useRef<HTMLDialogElement>(null),orbit=useRef<HTMLDivElement>(null),details=useRef<HTMLElement>(null);
- const tabButtons=useRef<Record<SystemTab,HTMLButtonElement|null>>({orbit:null,resources:null,ships:null,defenses:null}),tabId=useId();
+ const tabButtons=useRef<Record<SystemTab,HTMLButtonElement|null>>({orbit:null,resources:null,ships:null,defenses:null}),tabId=useId(),titleId=useId();
  const simulation=useRef<Simulation|null>(null),objects=useRef<ReturnType<Simulation['createSphere']>[]>([]);
+ const orbitDecor=useRef<InstanceType<typeof THREE.Object3D>[]>([]),orbitMaterials=useRef<InstanceType<typeof THREE.Material>[]>([]),orbitTextures=useRef<InstanceType<typeof THREE.Texture>[]>([]);
  const orbitPointer=useRef<{x:number;y:number}|null>(null);
  const [activeTab,setActiveTab]=useState<SystemTab>('orbit');
  const [activePlanet,setActivePlanet]=useState<number|null>(null);
+ const planetButtons=useRef<Array<HTMLButtonElement|null>>([]),returnToPlanet=useRef<number|null>(null);
+ const closePlanet=()=>{returnToPlanet.current=activePlanet;setActivePlanet(null);};
+ useEffect(()=>{
+  if(activePlanet!==null||returnToPlanet.current===null)return;
+  const index=returnToPlanet.current;returnToPlanet.current=null;
+  if(activeTab==='orbit')planetButtons.current[index]?.focus();
+ },[activePlanet,activeTab]);
  const hosts=useMemo<Host[]>(()=>{
   const reference=(catalog??snapshot.systems).map((item,index)=>({...item,id:index,temperatureK:item.temperatureK??null,starId:!fictional&&catalog&&stars?.some(star=>star.id===index)?index:undefined,reference:fictional||!catalog,astronomical:true}));
   return fictional&&stars?[...reference,...stars.map(star=>({...campaignVector(star,mapWidth,mapHeight),id:star.id,name:star.name,temperatureK:null,planets:[],starId:star.id,reference:false,astronomical:false}))]:reference;
@@ -30,7 +40,7 @@ export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence
  const [selected,setSelected]=useState(()=>fictional?0:Math.max(0,hosts.findIndex(host=>host.starId===stars?.find(star=>star.owner===team)?.id))),[renderError,setRenderError]=useState('');
  const [orbitZoom,setOrbitZoom]=useState(1),host=hosts[selected]??hosts[0],campaign=fictional||!!catalog;
  const selectedStar=host.starId===undefined?undefined:stars?.find(star=>star.id===host.starId),stats=selectedStar?.statistics;
- const lastMaterialSurvey=host.starId===undefined?undefined:intelligence?.filter(item=>item.star===host.starId&&item.returned&&item.materialSurvey).sort((a,b)=>b.turn-a.turn||Date.parse(b.at)-Date.parse(a.at))[0];
+ const lastMaterialSurvey=host.starId===undefined?undefined:latestMaterialSurvey(intelligence,host.starId);
  const materialSurvey=lastMaterialSurvey?.materialSurvey??stats?.materialSurvey;
  const currentOwn=!!(selectedStar?.visible&&selectedStar.owner===team&&stats?.knowledge==='current');
  const knowledge=stats?.knowledge==='historical'?`Last observed on turn ${stats.turn}; current values may differ.`:stats?.knowledge==='current'?`Current observation from turn ${stats.turn}.`:selectedStar?.known?'Charted; no measured system statistics.':'Uncharted; statistics unknown.';
@@ -46,21 +56,33 @@ export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence
   element.showModal();document.body.style.overflow='hidden';
   return()=>{element.close();document.body.style.overflow=overflow;if(opener?.isConnected)opener.focus();};
  },[embedded]);
- useEffect(()=>()=>{const sim=simulation.current;if(sim){sim.stop();(sim as unknown as {renderEnabled:boolean}).renderEnabled=false;sim.getViewer().get3jsCameraControls().dispose();sim.getRenderer().dispose();orbit.current?.replaceChildren();}},[]);
+ const clearOrbitArtwork=()=>{const sim=simulation.current;for(const object of orbitDecor.current)sim?.getScene().remove(object);for(const material of orbitMaterials.current)material.dispose();for(const texture of orbitTextures.current)texture.dispose();orbitDecor.current=[];orbitMaterials.current=[];orbitTextures.current=[];};
+ useEffect(()=>()=>{const sim=simulation.current;if(sim){clearOrbitArtwork();sim.stop();(sim as unknown as {renderEnabled:boolean}).renderEnabled=false;sim.getViewer().get3jsCameraControls().dispose();sim.getRenderer().dispose();orbit.current?.replaceChildren();}},[]);
  useEffect(()=>{
   const target=orbit.current;
-  if(!target||!host.astronomical){const old=simulation.current;if(old){old.stop();(old as unknown as {renderEnabled:boolean}).renderEnabled=false;old.getViewer().get3jsCameraControls().dispose();old.getRenderer().dispose();simulation.current=null;objects.current=[];}return;}
+  if(!target||!host.astronomical){const old=simulation.current;if(old){clearOrbitArtwork();old.stop();(old as unknown as {renderEnabled:boolean}).renderEnabled=false;old.getViewer().get3jsCameraControls().dispose();old.getRenderer().dispose();simulation.current=null;objects.current=[];}return;}
   try{
-   const sim=simulation.current??new Simulation(target as unknown as HTMLCanvasElement,{basePath:'/',particleTextureUrl:marker,jdPerSecond:8,camera:{initialPosition:[0,-3.2,1.4],enableDrift:false}});
+   const sim=simulation.current??new Simulation(target as unknown as HTMLCanvasElement,{basePath:'/',particleTextureUrl:marker,jdPerSecond:window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:8,camera:{initialPosition:[0,-3.2,1.4],enableDrift:false}});
    simulation.current=sim;
+   sim.getRenderer().setClearColor(0x071722,1);
+   clearOrbitArtwork();
    for(const object of objects.current)sim.removeObject(object);
-   const star=sim.createSphere(`star-${selected}`,{position:[0,0,0],radius:.095,color:host.temperatureK&&host.temperatureK<4000?0xffb285:0xffe5b8});
+   const warm=!!(host.temperatureK&&host.temperatureK<4000),starColor=warm?0xffb285:0xffe5b8;
+   const ambient=new THREE.AmbientLight(0x8faec1,.75),sunlight=new THREE.PointLight(starColor,18,12,1.5);
+   sunlight.position.set(0,0,0);sim.getScene().add(ambient,sunlight);orbitDecor.current.push(ambient,sunlight);
+   const haloCanvas=document.createElement('canvas');haloCanvas.width=haloCanvas.height=128;const haloContext=haloCanvas.getContext('2d')!;
+   const gradient=haloContext.createRadialGradient(64,64,5,64,64,63);gradient.addColorStop(0,'#ffffffbb');gradient.addColorStop(.17,warm?'#ffb88588':'#ffedbd88');gradient.addColorStop(1,'#ffffff00');haloContext.fillStyle=gradient;haloContext.fillRect(0,0,128,128);
+   const haloTexture=new THREE.CanvasTexture(haloCanvas),haloMaterial=new THREE.SpriteMaterial({map:haloTexture,transparent:true,depthWrite:false,opacity:.72}),halo=new THREE.Sprite(haloMaterial);halo.scale.set(.9,.9,1);sim.getScene().add(halo);orbitDecor.current.push(halo);orbitMaterials.current.push(haloMaterial);orbitTextures.current.push(haloTexture);
+   const star=sim.createSphere(`star-${selected}`,{position:[0,0,0],radius:.16,color:starColor});
    objects.current=[star];
    host.planets.forEach((planet,index)=>{
     // Period and semimajor axis are catalog data; circular plane and phase are illustrative.
     const displayAu=.25+Math.sqrt(Math.max(0,planet.semiMajorAu))*1.15;
     const ephem=new Ephem({a:displayAu,e:0,i:0,om:0,w:0,ma:index*137.5,period:planet.periodDays,epoch:sim.getJd()},'deg');
-    const body=sim.createSphere(`planet-${selected}-${index}`,{ephem,radius:.022,color:[0x85c9ea,0xd8a87d,0xb2d19b,0xc6b7e4][index%4]});
+    const body=sim.createSphere(`planet-${selected}-${index}`,{ephem,radius:.075,color:0xffffff});
+    const texture=illustrativeSurface(planet.name),material=new THREE.MeshStandardMaterial({map:texture,roughness:.88,metalness:0});
+    for(const object of body.get3jsObjects())object.traverse((child:InstanceType<typeof THREE.Object3D>)=>{if(child instanceof THREE.Mesh)child.material=material;});
+    orbitTextures.current.push(texture);orbitMaterials.current.push(material);
     body.orbitAround(star);objects.current.push(body);
    });
    setRenderError('');
@@ -75,7 +97,7 @@ export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence
  };
 
  const content=<>
-  <div className="starMapHeader"><div><small>{fictional?'REAL STARS + FICTIONAL CAMPAIGN':'OBSERVED MILKY WAY SYSTEMS'}</small><h2 id="real-systems-title">{fictional?'Campaign sky':'Real star and planet atlas'}</h2></div>{!embedded&&<button className="quiet" onClick={onClose}>Close atlas</button>}</div>
+  <div className="starMapHeader"><div><small>{fictional?'REAL STARS + FICTIONAL CAMPAIGN':'OBSERVED MILKY WAY SYSTEMS'}</small><h2 id={titleId}>{fictional?'Campaign sky':'Real star and planet atlas'}</h2></div>{!embedded&&<button className="quiet" onClick={onClose}>Close atlas</button>}</div>
   <p>{fictional?'Real catalog stars are reference markers. Your saved campaign systems remain separate fictional locations with illustrative depth and their original identities.':"24 nearby confirmed planet hosts in a Spacekit 3D scene. Grab to rotate; catalog distances set each star's position."} {campaign?'Routes show saved one-turn jumps between playable systems. Ownership and scouting detail follow your clan knowledge. Red markers from reports are historical.':'This reference atlas does not change your campaign.'}</p>
   {campaign&&host.starId!==undefined&&state(selected)==='reported-enemy'&&<p role="status">Enemy ownership last observed on turn {lastOwnerReport(host.starId)?.turn}; current ownership is unconfirmed.</p>}
   <div className="realSystemsGrid">
@@ -87,10 +109,10 @@ export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence
     {host.starId!==undefined&&onOpenStatistics&&<button type="button" className="secondary" onClick={()=>onOpenStatistics(host.starId!)}>Open full system statistics</button>}
     <div className="systemTabs" role="tablist" aria-label="Selected system sections">{tabs.map(tab=><button key={tab} ref={node=>{tabButtons.current[tab]=node;}} type="button" role="tab" id={`${tabId}-${tab}`} aria-controls={`${tabId}-${tab}-panel`} aria-selected={activeTab===tab} tabIndex={activeTab===tab?0:-1} onClick={()=>{setActiveTab(tab);setActivePlanet(null);}} onKeyDown={event=>tabKey(event,tab)}>{tab[0].toUpperCase()+tab.slice(1)}</button>)}</div>
     <section id={`${tabId}-orbit-panel`} role="tabpanel" aria-labelledby={`${tabId}-orbit`} hidden={activeTab!=='orbit'}>
-     {activePlanet!==null&&host.planets[activePlanet]&&<PlanetDetail planet={host.planets[activePlanet]} onClose={()=>setActivePlanet(null)}/>}<div hidden={activePlanet!==null}>{host.astronomical?<><div className="orbitZoomControls" aria-label="Orbital zoom"><button type="button" aria-label="Zoom orbit out" disabled={orbitZoom===1} onClick={()=>setOrbitZoom(value=>Math.max(1,value-.25))}>-</button><span>{Math.round(orbitZoom*100)}%</span><button type="button" aria-label="Zoom orbit in" disabled={orbitZoom===3} onClick={()=>setOrbitZoom(value=>Math.min(3,value+.25))}>+</button><button type="button" onClick={()=>setOrbitZoom(1)}>Reset orbit</button></div>
+     {activePlanet!==null&&host.planets[activePlanet]&&<PlanetDetail planet={host.planets[activePlanet]} onClose={closePlanet}/>}<div hidden={activePlanet!==null}>{host.astronomical?<><div className="orbitZoomControls" aria-label="Orbital zoom"><button type="button" aria-label="Zoom orbit out" disabled={orbitZoom===1} onClick={()=>setOrbitZoom(value=>Math.max(1,value-.25))}>-</button><span>{Math.round(orbitZoom*100)}%</span><button type="button" aria-label="Zoom orbit in" disabled={orbitZoom===3} onClick={()=>setOrbitZoom(value=>Math.min(3,value+.25))}>+</button><button type="button" onClick={()=>setOrbitZoom(1)}>Reset orbit</button></div>
       <div ref={orbit} className="realOrbit" role="img" aria-label={`Spacekit orbital view of ${host.name} and its cataloged planets; click a planet or use its button below`} onPointerDown={event=>{orbitPointer.current={x:event.clientX,y:event.clientY};}} onPointerUp={openOrbitPlanet} onPointerCancel={()=>{orbitPointer.current=null;}}/>{renderError&&<p role="alert">Spacekit view unavailable: {renderError}</p>}
-      <ul>{host.planets.map((planet,index)=><li key={planet.name}><button type="button" className="planetCTA" aria-label={`Open ${planet.name} planet details`} onClick={()=>setActivePlanet(index)}>{planet.name}</button>{currentOwn&&selectedStar?.homePlanetId===index&&<span> - clan homeworld</span>} - {planet.periodDays.toFixed(2)} day orbit - {planet.semiMajorAu.toFixed(3)} AU{planet.radiusEarth!=null?` - estimated ${planet.radiusEarth.toFixed(2)} Earth radii`:' - radius unknown'}</li>)}</ul>
-      <p className="realDataNote">Catalog orbits are compressed; circular paths and phases are illustrative.</p></>:<p>This saved fictional system has no cataloged real planets or orbital elements. Its identity and location remain unchanged.</p>}</div>
+      <ul>{host.planets.map((planet,index)=><li key={planet.name}><button ref={node=>{planetButtons.current[index]=node;}} type="button" className="planetCTA" aria-label={`Open ${planet.name} planet details`} onClick={()=>setActivePlanet(index)}>{planet.name}</button>{currentOwn&&selectedStar?.homePlanetId===index&&<span> - clan homeworld</span>} - {planet.periodDays.toFixed(2)} day orbit - {planet.semiMajorAu.toFixed(3)} AU{planet.radiusEarth!=null?` - estimated ${planet.radiusEarth.toFixed(2)} Earth radii`:' - radius unknown'}</li>)}</ul>
+      <p className="realDataNote">Catalog periods and distances are shown above. Orbital spacing, circular paths, phases, planet sizes and surfaces in this view are illustrative.</p></>:<p>This saved fictional system has no cataloged real planets or orbital elements. Its identity and location remain unchanged.</p>}</div>
     </section>
     <section id={`${tabId}-resources-panel`} role="tabpanel" aria-labelledby={`${tabId}-resources`} hidden={activeTab!=='resources'}>
      <dl className="systemFacts"><div><dt>Material output</dt><dd>{currentOwn&&selectedStar?.materialYield?materialNames.map((name,index)=>`${name} ${measured(selectedStar.materialYield?.[index])} / turn`).join(' · '):'Not measured'}</dd></div><div><dt>Deep material survey</dt><dd>{materialSurvey?`${materialNames.map((name,index)=>materialSurvey[index]?`${name}: ${materialSurvey[index]} planet${materialSurvey[index]===1?'':'s'}`:null).filter(Boolean).join(', ')||'No cataloged material sites'}${lastMaterialSurvey?` (observed turn ${lastMaterialSurvey.turn})`:''}`:'Unknown'}</dd></div><div><dt>Mines</dt><dd>{currentOwn?measured(selectedStar?.mines):'Unknown'}</dd></div><div><dt>Settlement size</dt><dd>{currentOwn?measured(selectedStar?.settlementSize):'Unknown'}</dd></div><div><dt>Collectors</dt><dd>{measured(stats?.collectors)}</dd></div><div><dt>Colony income</dt><dd>{stats?.colonyIncome==null?'Unknown':`${stats.colonyIncome} credits / turn`}</dd></div><div><dt>Local stockpile</dt><dd>{currentOwn&&selectedStar?.stockpile?materialNames.map((name,index)=>`${name} ${measured(selectedStar.stockpile?.[index])}`).join(' · '):'Not measured'}</dd></div></dl><p>Surveyed material types are a dated observation. Current production and stockpiles remain unknown outside your own observed systems.</p>
@@ -105,5 +127,5 @@ export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence
   </div>
   {!fictional&&<p className="realDataNote">Orbit sizes are compressed; periods use catalog values. Circular paths and starting phases are illustrative because this snapshot does not contain complete orbital elements. Planet colors and sizes are visual markers, not measured surfaces. <a href={snapshot.sourceUrl} target="_blank" rel="noreferrer">NASA Exoplanet Archive source</a> - Retrieved {snapshot.retrievedUtc.slice(0,10)}.</p>}
  </>;
- return embedded?<section className="realSystemsDialog inlineRealSky" aria-labelledby="real-systems-title">{content}</section>:<dialog ref={dialog} className="realSystemsDialog" aria-labelledby="real-systems-title" onCancel={event=>{event.preventDefault();if(activePlanet!==null)setActivePlanet(null);else onClose();}}>{content}</dialog>;
+ return embedded?<section className="realSystemsDialog inlineRealSky" aria-labelledby={titleId}>{content}</section>:<dialog ref={dialog} className="realSystemsDialog" aria-labelledby={titleId} onCancel={event=>{event.preventDefault();if(activePlanet!==null)closePlanet();else onClose();}}>{content}</dialog>;
 }

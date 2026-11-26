@@ -73,7 +73,8 @@ export default function PlanetPreview({starId,name}){
     const keydown=e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;e.preventDefault();group.rotation.y+=(e.key==='ArrowLeft'?-1:1)*.14;manualUntil=performance.now()+1800;};
     mount.addEventListener('pointerdown',down);mount.addEventListener('pointermove',move);mount.addEventListener('pointerup',up);mount.addEventListener('pointercancel',up);mount.addEventListener('keydown',keydown);
     const observer=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??true;});observer.observe(mount);
-    const animate=now=>{frame=requestAnimationFrame(animate);if(!dragging&&now>manualUntil)group.rotation.y+=.0022;if(visible&&!document.hidden)renderer.render(scene,camera);};frame=requestAnimationFrame(animate);
+    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+    const animate=now=>{frame=requestAnimationFrame(animate);if(!reducedMotion.matches&&!dragging&&now>manualUntil)group.rotation.y+=.0022;if(visible&&!document.hidden)renderer.render(scene,camera);};frame=requestAnimationFrame(animate);
     return()=>{cancelAnimationFrame(frame);observer.disconnect();mount.removeEventListener('pointerdown',down);mount.removeEventListener('pointermove',move);mount.removeEventListener('pointerup',up);mount.removeEventListener('pointercancel',up);mount.removeEventListener('keydown',keydown);geometry.dispose();atmosphereGeometry.dispose();material.dispose();atmosphereMaterial.dispose();texture.dispose();renderer.dispose();renderer.domElement.remove();};
   },[starId]);
   return createElement('figure',{className:'planetPreview'},

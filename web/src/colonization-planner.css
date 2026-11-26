@@ -1,0 +1,12 @@
+.colonizationPlanner.expeditionDialog{width:min(94vw,1040px);max-width:none}
+.colonizationPlanner header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.colonizationPlanner header small{letter-spacing:.14em}
+.plannerFilters{display:flex;align-items:end;flex-wrap:wrap;gap:10px 16px}
+.plannerFilters label{flex:1 1 150px}
+.plannerFilters .plannerShortlist{display:flex;align-items:center;gap:7px;min-height:36px}
+.plannerFilters .plannerShortlist input{width:auto;margin:0}
+.plannerTableWrap{overflow:auto;border:1px solid #34545b;border-radius:7px}
+.plannerTableWrap table{width:100%;min-width:680px}
+.plannerTableWrap th,.plannerTableWrap td{vertical-align:top;text-align:left}
+.plannerTableWrap tbody small{display:block;margin-top:4px;max-width:22ch}
+.plannerTableWrap tbody button{display:block;margin-top:5px}

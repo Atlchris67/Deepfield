@@ -1,6 +1,7 @@
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
 
 let browser;
 const server=await createServer({configFile:false,root:process.cwd(),server:{host:'127.0.0.1',port:0},appType:'mpa'});
@@ -26,15 +27,21 @@ try{
  const planet=details.getByRole('region',{name:'Proxima Cen b size comparison'});await planet.waitFor();
  assert.match(await planet.innerText(),/estimated 1\.02 Earth radii/);
  await planet.locator('canvas').waitFor();
+ assert.match(await planet.innerText(),/Surface and color are fictional/);
+ await mkdir('../test-results',{recursive:true});
+ await page.screenshot({path:'../test-results/planet-detail-desktop.png'});
  await planet.getByRole('button',{name:'Back to system'}).click();await planet.waitFor({state:'detached'});
  await details.getByRole('button',{name:'Open Proxima Cen d planet details'}).click();
  assert.match(await details.innerText(),/estimated 0\.69 Earth radii/);
  await page.keyboard.press('Escape');assert.equal(await details.getByRole('region',{name:'Proxima Cen d size comparison'}).count(),0);
  await details.getByRole('tab',{name:'Orbit'}).click();
+ assert.match(await details.innerText(),/planet sizes and surfaces in this view are illustrative/);
+ await page.screenshot({path:'../test-results/orbital-view-desktop.png'});
  const orbit=details.getByRole('img',{name:/Spacekit orbital view/}),before=await orbit.boundingBox();
  for(let index=0;index<8;index++)await details.getByRole('button',{name:'Zoom orbit in'}).click();
  const after=await orbit.boundingBox();assert.ok(Math.abs(before.width-after.width)<1&&Math.abs(before.height-after.height)<1);
  await page.setViewportSize({width:390,height:690});assert.ok((await sky.boundingBox()).width<=390);
+ await details.scrollIntoViewIfNeeded();await page.screenshot({path:'../test-results/orbital-view-mobile.png'});
  await atlas.getByRole('button',{name:'Close atlas'}).click();await atlas.waitFor({state:'detached'});
  assert.deepEqual(errors,[]);console.log('System panel, planet comparison, and fixed orbit viewport checks passed.');
 }finally{if(browser)await browser.close();await server.close();}
