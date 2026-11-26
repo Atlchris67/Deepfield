@@ -13,9 +13,12 @@ try{
  await page.getByLabel('Generated star map preview').waitFor();
  check((await dialog.innerText()).includes('24 systems')&&(await dialog.innerText()).includes('Real catalog v1'),'Default real-catalog preview generates on open');
  check((await dialog.innerText()).includes('Your current campaign remains unchanged'),'Separate campaign boundary is explicit');
- check(await dialog.getByRole('radio',{name:/Local stock, freighters/}).isChecked()&&await dialog.getByRole('radio',{name:/Shared clan stock/}).isVisible(),
-  'Local materials are the default and shared stock remains available');
- check(await dialog.getByRole('combobox',{name:'Fleet rules'}).inputValue()==='1','New real campaigns default to typed fleets and ship design');
+ const modePicker=dialog.getByRole('combobox',{name:'Rules mode'});
+ check(await modePicker.inputValue()==='advanced'&&await dialog.getByRole('slider').count()===2&&(await dialog.innerText()).includes('Rules mode: Advanced'),'The local tool defaults to advanced mode with an industrial focus for each clan');
+ await modePicker.selectOption('simple');
+ check(await dialog.getByRole('slider').count()===0&&(await dialog.innerText()).includes('Rules mode: Simple')&&(await dialog.innerText()).includes('credits only')&&await dialog.getByRole('radio').count()===0&&await dialog.getByRole('combobox',{name:'Fleet rules'}).count()===0,
+  'Simple mode is one choice: no industrial focus, and the separate material and fleet switches are gone');
+ await modePicker.selectOption('advanced');
  await page.getByRole('button',{name:'Generate preview'}).click();await page.getByRole('button',{name:'Start new campaign'}).waitFor();
  check((await page.getByRole('img').getAttribute('aria-label'))==='Preview of 24 generated star systems','Map exposes an accessible preview description');
  check(await dialog.getByText('Proxima Cen',{exact:false}).count()>0,'Real catalog homeworld is named in the preview');

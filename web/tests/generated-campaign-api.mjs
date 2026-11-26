@@ -49,6 +49,19 @@ try{
  check((await api('local/campaigns',{method:'POST',body:{...startBody,id:id(),preview:{...previewRequest,real:false}}})).status===409,'New fictional campaign is rejected');
  check((await api('local/campaigns',{method:'POST',body:{...startBody,id:id(),generatorVersion:preview.generatorVersion+1}})).status===409,'Stale generator version is rejected');
  check((await api('local/campaigns',{method:'POST',body:{...startBody,id:id()},headers:{'X-Forwarded-For':'8.8.8.8'}})).status===404,'Forwarded start is denied');
+ const simpleId=id(),simpleBody={id:simpleId,generatorVersion:preview.generatorVersion,preview:previewRequest,mode:'simple'};
+ const simpleStart=await api('local/campaigns',{method:'POST',body:simpleBody}),simpleGame=(await simpleStart.json()).campaign;
+ check(simpleStart.status===200&&simpleGame.mode==='simple'&&simpleGame.combatVersion===0&&simpleGame.logisticsVersion===0&&simpleGame.economyVersion===0&&simpleGame.materials===null&&simpleGame.stars.length===24&&simpleGame.nextIncome===15,
+  'A campaign can be started in simple mode: real stars, generic ships, credits only');
+ check((await api('local/campaigns',{method:'POST',body:{...simpleBody,mode:'advanced'}})).status===409&&(await api('local/campaigns',{method:'POST',body:{...simpleBody,id:id(),mode:'expert'}})).status===409&&(await api('local/campaigns',{method:'POST',body:{...simpleBody,id:id(),industrialFocus:[1,0]}})).status===409,
+  'A retry cannot change the saved mode, and an unknown mode or industrial focus in simple mode is rejected');
+ const simpleHome=simpleGame.stars.find(star=>star.owner===simpleGame.team).id;
+ check((await api('orders',{method:'PUT',body:{turn:1,revision:0,requestId:'simple-defense',orders:[{kind:'defense',source:simpleHome,target:-1,ships:0}]},campaign:simpleId})).status===409&&
+       (await api('orders',{method:'PUT',body:{turn:1,revision:0,requestId:'simple-build',orders:[{kind:'build',source:simpleHome,target:-1,ships:3}]},campaign:simpleId})).status===200,
+  'Simple mode refuses a fixed defense and accepts a plain ship build');
+ const advancedStart=await api('local/campaigns',{method:'POST',body:{...simpleBody,id:id(),mode:'advanced',industrialFocus:[1,-1]}}),advancedGame=(await advancedStart.json()).campaign;
+ check(advancedStart.status===200&&advancedGame.mode==='advanced'&&advancedGame.combatVersion===1&&advancedGame.logisticsVersion===1&&advancedGame.economyVersion===1&&advancedGame.industrialFocus===1&&advancedGame.nextIncome===18,
+  'A campaign can be started in advanced mode with every advanced rule on');
  const home=preview.homeworlds[0].systemId;
  const refit={kind:'refit',source:home,target:-1,ships:0,hull:'torpedo',package:'assault'};
  const orderBody={turn:1,revision:0,requestId:'design-order',orders:[refit]};
@@ -67,15 +80,13 @@ try{
   await page.getByRole('button',{name:'Enter command deck'}).click();
   await page.getByRole('button',{name:'Start new game'}).click();
   const dialog=page.getByRole('dialog',{name:'Configure star map'});
-  check(await dialog.getByRole('radio',{name:/Local stock, freighters/}).isChecked()&&await dialog.getByRole('radio',{name:/Shared clan stock/}).isVisible(),
-   'Both material modes are visible with Local selected by default');
-  check(await dialog.getByRole('combobox',{name:'Fleet rules'}).inputValue()==='1',
-   'New campaign defaults to typed hulls and ship design');
+  check(await dialog.getByRole('combobox',{name:'Rules mode'}).inputValue()==='advanced'&&await dialog.getByRole('combobox',{name:'Rules mode'}).locator('option').count()===2,
+   'Setup offers simple and advanced mode, with advanced selected in the local tool');
   await dialog.getByRole('button',{name:'Start new campaign'}).click();
   await dialog.waitFor({state:'detached'});
   const browserId=await page.evaluate(()=>sessionStorage.getItem('deepfieldCampaignId'));
   const browserSave=JSON.parse(await readFile(resolve(fixture,'generated-campaigns',`${browserId}.json`),'utf8'));
-  check(browserSave.CombatVersion===1&&browserSave.LogisticsVersion===1,'Browser setup saves selected fleet and material rules');
+  check(browserSave.Mode==='advanced'&&browserSave.EconomyVersion===1&&browserSave.CombatVersion===1&&browserSave.LogisticsVersion===1,'Browser setup saves the chosen mode and its rules');
   await page.getByRole('tab',{name:'Ship design'}).click();
   const design=page.getByRole('region',{name:'Ship design'});
   const torpedo=design.locator('.shipDesignRow').filter({has:page.locator('strong').getByText('Torpedo boat',{exact:true})});

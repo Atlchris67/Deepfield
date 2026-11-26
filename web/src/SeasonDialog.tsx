@@ -19,6 +19,8 @@ function Standings({standings,team,winner}:{standings:Standing[];team:number;win
 }
 
 const describe=(rule:VictoryRule)=>`${rule.colonies} colonies and ${rule.collectors} collectors`+(rule.turnLimit>0?`. If nobody has by the end of turn ${rule.turnLimit}, the clan with more colonies wins, then more collectors; equal is a shared victory`:'');
+const modeNames:Record<string,string>={simple:'Simple mode',advanced:'Advanced mode','':'This campaign\'s original rules'};
+const modeHelp:Record<string,string>={simple:'Generic ships, flat income, credits only. No materials, mines, freight, defenses or ship design.',advanced:'Ship types and design, tapered collector income, fixed defenses, materials, mines, local stock, freighters and gates.','':'The rule settings this campaign was created with carry on unchanged.'};
 const whole=(value:string)=>Math.max(0,Math.trunc(Number(value))||0);
 function RuleFields({rule,disabled,onChange}:{rule:VictoryRule;disabled:boolean;onChange:(rule:VictoryRule)=>void}){
  return <div className="ruleFields">
@@ -29,8 +31,8 @@ function RuleFields({rule,disabled,onChange}:{rule:VictoryRule;disabled:boolean;
 }
 
 // The victory screen, the season record, and the control that starts the next season.
-export function SeasonDialog({season,turn,victory,onSaveVictory,team,outcome,history,canStart,busy,error,onStart,onClose}:{season:number;turn:number;victory:VictoryRule;onSaveVictory:(rule:VictoryRule)=>void;team:number;outcome:Outcome|null;history:SeasonRecord[];canStart:boolean;busy:boolean;error:string;onStart:(endEarly:boolean,rule:VictoryRule)=>void;onClose:()=>void}){
- const dialog=useRef<HTMLDialogElement>(null),[endEarly,setEndEarly]=useState(false),[rule,setRule]=useState(victory);
+export function SeasonDialog({season,turn,victory,mode,onSaveSetup,team,outcome,history,canStart,busy,error,onStart,onClose}:{season:number;turn:number;victory:VictoryRule;mode:string|null;onSaveSetup:(rule:VictoryRule,mode:string)=>void;team:number;outcome:Outcome|null;history:SeasonRecord[];canStart:boolean;busy:boolean;error:string;onStart:(endEarly:boolean,rule:VictoryRule,mode:string)=>void;onClose:()=>void}){
+ const dialog=useRef<HTMLDialogElement>(null),[endEarly,setEndEarly]=useState(false),[rule,setRule]=useState(victory),[nextMode,setNextMode]=useState(mode??'');
  useEffect(()=>{dialog.current?.showModal();},[]);
  const shared=outcome?.winner===2,won=outcome?.winner===team;
  return <dialog ref={dialog} className={'planetDialog seasonDialog'+(outcome?(shared||won?' victory':' defeat'):'')} aria-labelledby="season-title" onClose={onClose} onCancel={onClose}>
@@ -41,14 +43,16 @@ export function SeasonDialog({season,turn,victory,onSaveVictory,team,outcome,his
     <Standings standings={outcome.standings} team={team} winner={outcome.winner}/>
     <p className="seasonMeta">Decided in {outcome.turns} {outcome.turns===1?'turn':'turns'}{outcome.ended?' · '+day(outcome.ended):''}</p>
    </>:<><h2 id="season-title">Season {season}</h2><p className="seasonLead">This season is still being played. To win: {describe(victory)}.</p></>}
+   <p className="seasonMeta">Rules: {modeNames[mode??'']}</p>
    {error&&<p role="alert" className="error">{error}</p>}
    <section className="nextSeason" aria-label="Next season">
     {canStart?<>
      <p>Season {season+1} starts everyone again from one homeworld, on a new map with different links and homeworlds. Clan channels and this record are kept. This cannot be undone.</p>
+     <h3 className="ruleTitle">Rules mode</h3><label className="modeChoice">Mode<select value={nextMode} disabled={busy} onChange={e=>setNextMode(e.target.value)}>{mode===null&&<option value="">Keep this campaign's original rules</option>}<option value="simple">Simple</option><option value="advanced">Advanced</option></select><small>{modeHelp[nextMode]}</small></label>
      <h3 className="ruleTitle">Winning condition</h3><RuleFields rule={rule} disabled={busy} onChange={setRule}/>
-     {!outcome&&turn===1&&<p><button type="button" className="quiet" disabled={busy} onClick={()=>onSaveVictory(rule)}>Use for season {season}</button> <small>Possible until the first turn resolves.</small></p>}
+     {!outcome&&turn===1&&<p><button type="button" className="quiet" disabled={busy} onClick={()=>onSaveSetup(rule,nextMode)}>Use for season {season}</button> <small>Possible until the first turn resolves.{nextMode&&nextMode!==(mode??'')?' Changing the mode clears orders already submitted this turn.':''}</small></p>}
      {!outcome&&<label className="endEarly"><input type="checkbox" checked={endEarly} disabled={busy} onChange={e=>setEndEarly(e.target.checked)}/> End season {season} now, without a winner</label>}
-     <button type="button" disabled={busy||(!outcome&&!endEarly)} onClick={()=>onStart(!outcome,rule)}>Start season {season+1} →</button>
+     <button type="button" disabled={busy||(!outcome&&!endEarly)} onClick={()=>onStart(!outcome,rule,nextMode)}>Start season {season+1} →</button>
     </>:outcome?<p>The campaign owner starts season {season+1}. Use “Refresh clan orders” to check whether it has begun.</p>:null}
    </section>
    <h3>Past seasons</h3>

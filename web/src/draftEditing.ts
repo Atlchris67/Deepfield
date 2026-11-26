@@ -6,7 +6,7 @@ export const wireOrder=({draftId:_,editable:__,...order}:DraftOrder):Order=>orde
 export function replaceDraft(draft:DraftOrder[],id:string,order:Order){
  return draft.map(item=>item.draftId===id&&item.editable?{...order,draftId:id,editable:true}:item);
 }
-export type EditContext={stars:Star[];team:number;combatVersion:number;economyVersion:number;realCatalogVersion?:number|null;industrialFocus?:number;logisticsVersion?:number;materials?:number[]|null;credits:number;turn:number;revision:number;deadline:string;winner:number|null;links?:StarLink[]|null};
+export type EditContext={stars:Star[];team:number;combatVersion:number;economyVersion:number;realCatalogVersion?:number|null;mode?:string|null;industrialFocus?:number;logisticsVersion?:number;materials?:number[]|null;credits:number;turn:number;revision:number;deadline:string;winner:number|null;links?:StarLink[]|null};
 export function validateEdit(context:EditContext,draft:DraftOrder[],id:string,order:Order):string[]{
  const item=draft.find(o=>o.draftId===id);
  if(!item?.editable)return ['Only unsubmitted draft orders can be edited.'];
@@ -32,9 +32,9 @@ export function validateEdit(context:EditContext,draft:DraftOrder[],id:string,or
   if(order.ships!==1||!['distant','close','deep'].includes(order.mission??''))errors.push('Select a valid one-scout mission.');
   if(availableScouts(s,context.team,others)<1)errors.push('Not enough existing scouts after drafted expeditions and reconnaissance.');
  }
- if(order.kind==='defense'&&((context.economyVersion!==1&&context.realCatalogVersion==null)||(s.defense??0)+all.filter(o=>o.kind==='defense'&&o.source===s.id).length*2>6))errors.push('Fixed defenses require an owned colony and at most 6 strength.');
- if(order.kind==='mine'&&(context.realCatalogVersion==null||(s.mines??0)+all.filter(o=>o.kind==='mine'&&o.source===s.id).length>4))errors.push('Mines require a real-system colony; maximum four.');
- if(order.kind==='settlement'&&(context.realCatalogVersion==null||(s.settlementSize??0)+all.filter(o=>o.kind==='settlement'&&o.source===s.id).length>4))errors.push('Settlement growth requires a real-system colony; maximum size four.');
+ if(order.kind==='defense'&&(context.mode==='simple'||(context.economyVersion!==1&&context.realCatalogVersion==null)||(s.defense??0)+all.filter(o=>o.kind==='defense'&&o.source===s.id).length*2>6))errors.push('Fixed defenses require an owned colony and at most 6 strength.');
+ if(order.kind==='mine'&&(context.mode==='simple'||context.realCatalogVersion==null||(s.mines??0)+all.filter(o=>o.kind==='mine'&&o.source===s.id).length>4))errors.push('Mines require a real-system colony; maximum four.');
+ if(order.kind==='settlement'&&(context.mode==='simple'||context.realCatalogVersion==null||(s.settlementSize??0)+all.filter(o=>o.kind==='settlement'&&o.source===s.id).length>4))errors.push('Settlement growth requires a real-system colony; maximum size four.');
  if(typed&&order.kind==='build'&&hullIndex>=0&&context.stars.reduce((n,s)=>n+(s.fleets?.[context.team]?.[hullIndex]??0),0)+all.filter(o=>o.kind==='build'&&(o.hull??'interceptor')===hulls[hullIndex].id).reduce((n,o)=>n+o.ships,0)>10000)errors.push('Clan limit: 10,000 ships per hull class.');
  if(!['move','build','scoutbuild','recon','collector','defense','mine','settlement'].includes(order.kind))errors.push('Select a valid action.');
  const cost=all.reduce((n,o)=>n+(o.kind==='collector'?30:o.kind==='defense'?8:o.kind==='mine'?12:o.kind==='settlement'?20:o.kind==='freighter'?10*o.ships:o.kind==='gate'?30:o.kind==='refit'?12:o.kind==='scoutbuild'?o.ships*3:o.kind==='build'?o.ships*((typed?(hulls.find(h=>h.id===(o.hull??'interceptor'))?.cost??5):5)+(context.industrialFocus??0)):0),0);

@@ -1,7 +1,7 @@
 import {linked,type Order,type Star,type StarLink} from './fleetSelection';
 
 export const materialNames=['Ferrite','Vardite','Ceryth','Neralite','Soryl','Avenite'] as const;
-type Context={stars:Star[];team:number;realCatalogVersion?:number|null;logisticsVersion?:number;materials?:number[]|null;links?:StarLink[]|null};
+type Context={stars:Star[];team:number;realCatalogVersion?:number|null;mode?:string|null;logisticsVersion?:number;materials?:number[]|null;links?:StarLink[]|null};
 export type MaterialReservation={orderIndex:number;source:string;material:string;orderCost:number;reservedBefore:number;required:number;available:number|null;shortfall:number;stockScope:string;guidance?:string};
 
 function shortageGuidance(context:Context,source:Star,materialIndex:number):string{
@@ -46,7 +46,7 @@ function access(context:Context,source:Star):Star[]{
 
 /** Mirrors the saved campaign's pooled or paired-gate reservation scope; the server remains authoritative. */
 export function materialReservations(context:Context,orders:Order[]):MaterialReservation[]{
- if(context.realCatalogVersion==null)return [];
+ if(context.realCatalogVersion==null||context.mode==='simple')return [];
  const reserved=new Map<string,number[]>(),result:MaterialReservation[]=[];
  orders.forEach((order,orderIndex)=>{
   const source=context.stars.find(star=>star.id===order.source);

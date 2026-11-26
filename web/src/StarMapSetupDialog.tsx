@@ -5,14 +5,14 @@ export type StarMapPreviewRequest=StarMapSettings&{seed:number;real?:boolean};
 export type CatalogPlanet={id:number;name:string;periodDays:number;semiMajorAu:number;radiusEarth:number|null};
 export type CatalogSystem={id:number;name:string;raDeg:number;decDeg:number;distancePc:number;temperatureK:number|null;planets:CatalogPlanet[]};
 export type GeneratedStarMap={generatorVersion:number;seed:number;settings:StarMapSettings;systems:{id:number;name:string;x:number;y:number}[];links:{from:number;to:number}[];homeworlds:{playerSlot:number;systemId:number;planetId?:number|null}[];realCatalogVersion?:number|null;realSystems?:CatalogSystem[]|null};
-export type CampaignOptions={logisticsVersion:0|1;industrialFocus:[number,number];combatVersion:0|1};
+export type CampaignOptions={mode:'simple'|'advanced';industrialFocus:[number,number]};
 
 const defaults:StarMapPreviewRequest={seed:0,systemCount:24,width:1000,height:700,minimumSeparation:1,nearestNeighborLinks:2,playerCount:2,real:true};
 
 export function StarMapSetupDialog({onClose,onGenerate,onStart}:{onClose:()=>void;onGenerate:(request:StarMapPreviewRequest,signal:AbortSignal)=>Promise<GeneratedStarMap>;onStart?:(map:GeneratedStarMap,id:string,signal:AbortSignal,options:CampaignOptions)=>Promise<void>}){
  const dialog=useRef<HTMLDialogElement>(null),closeButton=useRef<HTMLButtonElement>(null),request=useRef<AbortController|null>(null),backdropDown=useRef(false);
  const [settings]=useState(defaults),[map,setMap]=useState<GeneratedStarMap|null>(null),[busy,setBusy]=useState(false),[starting,setStarting]=useState(false),[error,setError]=useState('');
- const [options,setOptions]=useState<CampaignOptions>({logisticsVersion:1,industrialFocus:[0,0],combatVersion:1});
+ const [options,setOptions]=useState<CampaignOptions>({mode:'advanced',industrialFocus:[0,0]});
  const startId=useRef<string|null>(null),startingRef=useRef(false);
  useEffect(()=>{
   const opener=document.activeElement instanceof HTMLElement?document.activeElement:null;const element=dialog.current!;const overflow=document.body.style.overflow;
@@ -43,12 +43,11 @@ export function StarMapSetupDialog({onClose,onGenerate,onStart}:{onClose:()=>voi
    <form onSubmit={event=>{event.preventDefault();void generate();}}>
      <fieldset disabled={busy||starting}><div className="starMapFields">
       <p>New campaigns use the pinned catalog of nearby real stars and cataloged planets. Clan names remain independent of astronomy names.</p>
-    </div><div className="campaignRules"><div className="materialAccess" role="radiogroup" aria-labelledby="material-access-title"><h3 id="material-access-title">Material access</h3><p>Choose how this new campaign handles resources. This choice stays with the campaign.</p><label className="materialAccessChoice"><input type="radio" name="material-access" value="0" checked={options.logisticsVersion===0} onChange={()=>setOptions(current=>({...current,logisticsVersion:0}))}/><span><strong>Shared clan stock</strong><small>One pooled stockpile. No freighters or gates to build.</small></span></label><label className="materialAccessChoice"><input type="radio" name="material-access" value="1" checked={options.logisticsVersion===1} onChange={()=>setOptions(current=>({...current,logisticsVersion:1}))}/><span><strong>Local stock, freighters and paired gates</strong><small>Resources stay at each world. Homeworlds start with a gate and two freighters; outposts need delivered materials to build gates.</small></span></label></div>
-      <label>Fleet rules<select value={options.combatVersion} onChange={event=>setOptions(current=>({...current,combatVersion:Number(event.target.value) as 0|1}))}><option value={1}>Typed hulls and ship design</option><option value={0}>Classic generic ships</option></select><small>Ship packages are available with typed hulls. Existing campaigns keep their own fleet rules.</small></label>
-      {(['Aurora Federation','Ember Empire'] as const).map((name,team)=><label key={name}>{name}: mining ↔ shipbuilding
+    </div><div className="campaignRules"><label>Rules mode<select value={options.mode} onChange={event=>setOptions(current=>({mode:event.target.value as 'simple'|'advanced',industrialFocus:event.target.value==='simple'?[0,0]:current.industrialFocus}))}><option value="advanced">Advanced</option><option value="simple">Simple</option></select><small>{options.mode==='simple'?'Simple: generic ships, flat income, credits only. No materials, mines, freight, defenses or ship design.':'Advanced: ship types and design, tapered collector income, fixed defenses, materials, mines, local stock, freighters and gates.'} The mode stays with the campaign for this season.</small></label>
+      {options.mode==='advanced'&&<>{(['Aurora Federation','Ember Empire'] as const).map((name,team)=><label key={name}>{name}: mining ↔ shipbuilding
        <input type="range" min="-2" max="2" step="1" value={options.industrialFocus[team]} onChange={event=>setOptions(current=>{const focus=[...current.industrialFocus] as [number,number];focus[team]=Number(event.target.value);return {...current,industrialFocus:focus};})}/>
-       <small>{options.industrialFocus[team]}: material output {25*(4+options.industrialFocus[team])}% of balanced; generic ships {5+options.industrialFocus[team]} credits each. Typed hulls add this modifier to their base credit cost.</small>
-      </label>)}<button type="button" className="quiet" onClick={()=>setOptions(current=>({...current,industrialFocus:[0,0]}))}>Reset traits to balanced</button>
+       <small>{options.industrialFocus[team]}: material output {25*(4+options.industrialFocus[team])}% of balanced; every ship hull costs {options.industrialFocus[team]>0?'+':''}{options.industrialFocus[team]} credits.</small>
+      </label>)}<button type="button" className="quiet" onClick={()=>setOptions(current=>({...current,industrialFocus:[0,0]}))}>Reset traits to balanced</button></>}
      </div></fieldset>
     <div className="starMapActions"><button disabled={busy}>{busy?'Generating.':'Generate preview'}</button></div>
    </form>
@@ -61,7 +60,7 @@ export function StarMapSetupDialog({onClose,onGenerate,onStart}:{onClose:()=>voi
      {map.homeworlds.map(home=>{const system=systems.get(home.systemId)!;return <text key={home.playerSlot} x={system.x+markerScale*.02} y={system.y-markerScale*.018} fontSize={markerScale*.026}>P{home.playerSlot+1}</text>;})}
     </svg>
     <ol className="homeworldList">{map.homeworlds.map(home=><li key={home.playerSlot}>Player {home.playerSlot+1}: <strong>{systems.get(home.systemId)?.name}</strong>{map.realSystems&&home.planetId!=null&&<> — {map.realSystems[home.systemId]?.planets[home.planetId]?.name}</>}</li>)}</ol>
-    {onStart&&<p className="campaignRuleSummary" role="status">Material access: <strong>{options.logisticsVersion===1?'Local stock, freighters and paired gates':'Shared clan stock — no freight or gates'}</strong>. Fleet rules: <strong>{options.combatVersion===1?'Typed hulls and ship design':'Classic generic ships'}</strong>.</p>}
+    {onStart&&<p className="campaignRuleSummary" role="status">Rules mode: <strong>{options.mode==='advanced'?'Advanced':'Simple'}</strong>.</p>}
     {onStart&&<div className="starMapActions"><button type="button" disabled={busy||starting||map.settings.playerCount!==2||map.settings.systemCount<4||!previewCurrent} onClick={()=>void start()}>{starting?'Starting campaign.':'Start new campaign'}</button></div>}
     {onStart&&(map.settings.playerCount!==2||map.settings.systemCount<4)&&<p>Playable campaigns require two players and at least four systems.</p>}
    </section>}
