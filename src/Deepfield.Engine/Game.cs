@@ -71,6 +71,8 @@ public class Game
     public DateTimeOffset? Started { get; set; }
     public DateTimeOffset? Ended { get; set; }
     public List<SeasonRecord> History { get; set; } = [];
+    // Null is the original rule: 4 colonies and 8 collectors, no turn limit.
+    public VictoryRule? Victory { get; set; }
 }
 public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null, int? Defense = null, int[][]? Fleets = null, PlanetStats? Statistics = null,
     int? Mines = null, int? SettlementSize = null, int? HomePlanetId = null, int[]? MaterialYield = null,
@@ -81,7 +83,7 @@ public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, str
     IReadOnlyList<StarMapLink>? Links = null, int? MapWidth = null, int? MapHeight = null,
     int? RealCatalogVersion = null, IReadOnlyList<CatalogSystem>? RealSystems = null, int[]? Materials = null,
     int IndustrialFocus = 0, int LogisticsVersion = 0, string[]? ShipDesigns = null,
-    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null);
+    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null, VictoryRule? Victory = null);
 public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
@@ -150,6 +152,7 @@ public static class Rules
         foreach (var s in g.Stars.Where(s => s.Id == id || Linked(g,s.Id, id)))
             if (!g.Clans[team].Known.Contains(s.Id)) g.Clans[team].Known.Add(s.Id);
     }
+    public static VictoryRule Victory(Game g) => g.Victory ?? new();
     public static View Observe(Game g, int team)
     {
         var c = g.Clans[team];
@@ -173,7 +176,7 @@ public static class Rules
             RealSystems: g.GeneratedMap?.RealSystems?.Select(host => host with { Planets = c.Known.Contains(host.Id) ? host.Planets : [] }).ToArray(),
             Materials: c.Materials?.ToArray(), IndustrialFocus: c.IndustrialFocus, LogisticsVersion: g.LogisticsVersion,
             ShipDesigns: [..c.ShipDesigns],
-            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History]);
+            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g)) { Goal = Victory(g).Collectors };
     }
     public static void Validate(View v, List<Order> orders)
     {
@@ -424,7 +427,7 @@ public static class Rules
             g.Clans[refit.Team].ShipDesigns[refit.Hull] = refit.Package;
             g.Clans[refit.Team].Reports.Insert(0,$"{TypedCombat.Name(refit.Hull)} fleet package changed to {refit.Package}; active next turn.");
         }
-        var winners = new List<int>();
+        var winners = new List<int>(); var rule = Victory(g);
         for(var t=0;t<2;t++)
         {
             var c=g.Clans[t]; var owned=g.Stars.Where(s=>s.Owner==t).ToList();
@@ -445,10 +448,19 @@ public static class Rules
                     for (var i = 0; i < Materials.Count; i++) star.Stockpile![i] += output[i];
                 }
             }
-            c.Reports.Insert(0,$"Turn {g.Turn} complete. Income {income}; {owned.Count} colonies; {owned.Sum(s=>s.Collectors)}/8 energy collectors.");
-            if(owned.Count>=4 && owned.Sum(s=>s.Collectors)>=8) winners.Add(t);
+            c.Reports.Insert(0,$"Turn {g.Turn} complete. Income {income}; {owned.Count} colonies; {owned.Sum(s=>s.Collectors)}/{rule.Collectors} energy collectors.");
+            if(owned.Count>=rule.Colonies && owned.Sum(s=>s.Collectors)>=rule.Collectors) winners.Add(t);
             c.Orders.Clear(); c.Revision=0; c.Reports=c.Reports.Take(100).ToList();
             c.Intelligence=c.Intelligence.Take(200).ToList();
+        }
+        // At the turn limit an undecided season goes to the clan with more colonies, then more collectors; equal is shared.
+        if(winners.Count==0 && rule.TurnLimit>0 && g.Turn>=rule.TurnLimit)
+        {
+            var strength=g.Clans.Select((_,t)=>(Colonies:g.Stars.Count(s=>s.Owner==t),Collectors:g.Stars.Where(s=>s.Owner==t).Sum(s=>s.Collectors))).ToArray();
+            var order=strength[0].CompareTo(strength[1]);
+            if(order>=0) winners.Add(0);
+            if(order<=0) winners.Add(1);
+            foreach(var clan in g.Clans) clan.Reports.Insert(0,$"The season reached its {rule.TurnLimit}-turn limit and was decided on colonies, then collectors.");
         }
         // Simultaneous victory is a shared victory, represented by team 2.
         if(winners.Count>0) { g.Winner=winners.Count==2 ? 2 : winners[0]; g.Ended=now; }

@@ -22,8 +22,7 @@ These were decided by the owner and are not open for reinterpretation by contrib
 
 - **Which rules belong to simple mode and which to advanced mode.** The owner has decided *who* chooses (the game starter, at setup). The exact rule list for each mode is still to be proposed and confirmed before milestone 4 is built.
 - **Which cloud provider.** Postponed along with the move to the cloud.
-- **What carries over between seasons.** Built so far ([SEASONS.md](SEASONS.md)): the clans, their channels and the record of past seasons carry over; everything else starts fresh. The owner has not yet confirmed this, or whether anything should be earned from one season to the next.
-- **Whether a season has a time limit.** A season currently ends only when a clan reaches the victory condition. If "a few weeks" should be guaranteed, a turn limit with a points decision is needed; that is a rules decision for the owner.
+- **How a season at its turn limit is decided.** Decided 2026-11-26: nothing is earned between seasons (the record is enough), and the game creator configures the winning condition, including an optional turn limit ([SEASONS.md](SEASONS.md)). Still unconfirmed: the tie-break at the turn limit, built as more colonies, then more collectors, otherwise shared.
 
 ## Stars! clean-room rule
 

@@ -10,7 +10,7 @@ public static class SeasonChecks
         var count = 0; var now = DateTimeOffset.Parse("2026-11-26T12:00:00Z");
         void Check(bool ok, string label) { if (!ok) throw new Exception(label); count++; Console.WriteLine("PASS " + label); }
         bool Refused(Action action) { try { action(); return false; } catch (RuleException) { return true; } }
-        string Json(object value) => JsonSerializer.Serialize(value);
+        string Json(object? value) => JsonSerializer.Serialize(value);
         (int, int)[] Links(GeneratedStarMap map) => map.Links.Select(l => (l.From, l.To)).ToArray();
 
         // Varied maps.
@@ -90,10 +90,39 @@ public static class SeasonChecks
         for (var i = 0; i < Seasons.MaximumHistory + 5; i++) Seasons.StartNext(game, game.Season, 20 + i, later, endEarly: true);
         Check(game.History.Count == Seasons.MaximumHistory && game.History[^1].Season == game.Season - 1, "History keeps the most recent fifty seasons");
 
+        // Winning condition chosen by the game creator.
+        var custom = Fresh(15);
+        Check(Rules.Observe(custom, 0) is { Goal: 8, Victory: { Colonies: 4, Collectors: 8, TurnLimit: 0 } } && custom.Victory is null, "A campaign without a chosen winning condition uses 4 colonies and 8 collectors with no turn limit");
+        Check(Refused(() => Seasons.SetVictory(custom, 1, new(1, 8))) && Refused(() => Seasons.SetVictory(custom, 1, new(13, 20))) && Refused(() => Seasons.SetVictory(custom, 1, new(4, 3))) && Refused(() => Seasons.SetVictory(custom, 1, new(4, 61))) &&
+              Refused(() => Seasons.SetVictory(custom, 1, new(4, 8, 4))) && Refused(() => Seasons.SetVictory(custom, 1, new(4, 8, 366))) && Refused(() => Seasons.SetVictory(custom, 2, new(3, 6))) && custom.Victory is null,
+            "An out-of-range winning condition, or one for another season, is refused");
+        Seasons.SetVictory(custom, 1, new(3, 6, 5));
+        Check(Rules.Observe(custom, 1) is { Goal: 6, Victory: { Colonies: 3, Collectors: 6, TurnLimit: 5 } } && custom.Clans.All(c => c.Reports[0].Contains("3 colonies and 6 collectors")), "The game creator can set the winning condition before the first turn, and both clans are told");
+        foreach (var star in custom.Stars.Where(s => s.Owner is null).Take(2)) { star.Owner = 1; star.Collectors = 3; }
+        Rules.Resolve(custom, custom.Deadline);
+        Check(custom.Winner == 1 && custom.Clans[1].Reports.Any(r => r.Contains("/6 energy collectors")), "A lowered winning condition decides the season at the lower threshold");
+        var limited = Fresh(16); Seasons.SetVictory(limited, 1, new(12, 60, 5));
+        limited.Stars.First(s => s.Owner is null).Owner = 0;
+        for (var i = 0; i < 4; i++) Rules.Resolve(limited, limited.Deadline);
+        Check(limited.Turn == 5 && limited.Winner is null && Refused(() => Seasons.SetVictory(limited, 1, new(4, 8))), "A turn limit does not end the season early, and the winning condition is fixed once turns have resolved");
+        var ahead = limited.Stars.Count(s => s.Owner == 0) - limited.Stars.Count(s => s.Owner == 1);
+        Rules.Resolve(limited, limited.Deadline);
+        Check(limited.Winner == (ahead > 0 ? 0 : ahead < 0 ? 1 : limited.Winner) && limited.Winner is not null && limited.Ended is not null && limited.Clans[0].Reports.Any(r => r.Contains("5-turn limit")),
+            "At the turn limit an undecided season goes to the clan with more colonies");
+        var level = Fresh(17); level.Clans[0].Ai = level.Clans[1].Ai = false; Seasons.SetVictory(level, 1, new(12, 60, 5));
+        for (var i = 0; i < 5; i++) Rules.Resolve(level, level.Deadline);
+        Check(level.Winner == 2, "Equal clans at the turn limit share the victory");
+        Seasons.StartNext(limited, 1, 18, later);
+        Check(limited.Victory == new VictoryRule(12, 60, 5) && limited.Clans[0].Reports[0].Contains("12 colonies and 60 collectors"), "The next season keeps the winning condition unless a new one is given");
+        Check(Refused(() => Seasons.StartNext(limited, 2, 19, later, endEarly: true, victory: new(1, 1))) && limited.Season == 2, "An invalid winning condition does not start a season");
+        Seasons.StartNext(limited, 2, 19, later, endEarly: true, victory: new(5, 10));
+        Check(limited.Season == 3 && limited.Victory == new VictoryRule(5, 10) && Rules.Observe(limited, 0).Goal == 10, "The game creator can choose a new winning condition when starting a season");
+        Check(GameCodec.Read(Json(limited)).Victory == new VictoryRule(5, 10), "The winning condition is saved with the campaign");
+
         // Saves.
         var legacy = Rules.Create(42017, now, false);
         var node = JsonNode.Parse(Json(legacy))!.AsObject();
-        foreach (var name in new[] { "Season", "Started", "Ended", "History" }) node.Remove(name);
+        foreach (var name in new[] { "Season", "Started", "Ended", "History", "Victory" }) node.Remove(name);
         var reloaded = GameCodec.Read(node.ToJsonString());
         Check(reloaded.Season == 1 && reloaded.History.Count == 0 && reloaded.Started is null && Rules.Observe(reloaded, 0) is { Season: 1, Outcome: null },
             "A save from before seasons existed loads as season 1 with no history");

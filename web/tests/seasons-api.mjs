@@ -50,6 +50,10 @@ try{
  check(firstOwner.seasonControl===true&&firstSam.seasonControl===false,'Only the campaign owner is offered season control');
  check(linkText(firstOwner.campaign)!==classicLinks&&homes(firstOwner.campaign).length===1&&homes(firstSam.campaign).length===1&&homes(firstOwner.campaign)[0]!==homes(firstSam.campaign)[0],'A hosted campaign starts on a seeded map, not the fixed original layout');
  check((await sam.call('admin/season',{season:1,endEarly:true})).status===403&&(await owner.call('admin/season',{season:1})).status===409&&(await owner.call('campaign')).json.campaign.season===1,'A player cannot start a season, and the owner cannot replace an undecided season by accident');
+ check(firstOwner.campaign.victory.colonies===4&&firstOwner.campaign.victory.collectors===8&&firstOwner.campaign.victory.turnLimit===0&&firstOwner.campaign.goal===8,'A new campaign starts with the standard winning condition');
+ check((await sam.call('admin/victory',{season:1,victory:{colonies:3,collectors:6,turnLimit:0}})).status===403&&(await owner.call('admin/victory',{season:1,victory:{colonies:1,collectors:6,turnLimit:0}})).status===409&&(await owner.call('admin/victory',{season:2,victory:{colonies:3,collectors:6,turnLimit:0}})).status===409&&(await sam.call('campaign')).json.campaign.victory.colonies===4,'Only the owner can change the winning condition, and only to a valid one for the current season');
+ const chosen=await owner.call('admin/victory',{season:1,victory:{colonies:3,collectors:6,turnLimit:30}}),seen=(await sam.call('campaign')).json.campaign;
+ check(chosen.status===200&&seen.victory.colonies===3&&seen.victory.collectors===6&&seen.victory.turnLimit===30&&seen.goal===6&&seen.reports[0].includes('3 colonies and 6 collectors'),'The owner sets the winning condition before the first turn and the other clan is told');
  assert.equal((await sam.call('messages',{id:'before-the-end',text:'Good game, see you next season.'})).status,200);
 
  // Decide the season by editing the throwaway save while the server is stopped: clan 0 holds 4 colonies and 10 collectors.
@@ -83,6 +87,7 @@ try{
  check(await ownerDialog.count()===0&&(await ownerPage.locator('.intro .eyebrow').innerText()).includes('SEASON 2 / TURN 001')&&await ownerPage.locator('.banner').count()===0,'Starting the next season returns the owner to a fresh command deck in season 2');
  check(second.season===2&&second.turn===1&&second.winner===null&&second.outcome===null&&homes(second).length===1&&homes(secondSam).length===1&&second.credits===60&&second.stars.filter(star=>star.owner!==null&&star.visible).length===1,'Season 2 starts both clans again from one homeworld');
  check(linkText(second)!==finalLinks&&linkText(second)!==classicLinks&&linkText(second)===linkText(secondSam),'Season 2 uses a different set of links, the same for both clans');
+ check(second.victory.colonies===3&&second.victory.collectors===6&&second.victory.turnLimit===30&&(await ownerPage.locator('section:has(.victory)').first().innerText()).replace(/\s+/g,' ').includes('/ 3 required'),'Season 2 keeps the winning condition when the owner does not change it, and the command deck shows it');
  check(second.history.length===1&&second.history[0].season===1&&second.history[0].winner===0&&second.history[0].turns===7&&second.history[0].standings[0].colonies===4&&secondSam.history.length===1,'Season 1 is recorded in the history for both clans');
  check(secondSam.messages.length===1&&secondSam.messages[0].text.includes('see you next season')&&second.messages.length===0,'Clan channels carry over into the new season and stay private');
  check((await owner.call('admin/season',{season:1})).status===409&&(await owner.call('campaign')).json.campaign.season===2,'Repeating the start request does not skip a season');
@@ -92,21 +97,29 @@ try{
  await samPage.getByRole('button',{name:'Season 2',exact:true}).click();
  const past=samDialog.locator('.seasonHistory li');
  check(await past.count()===1&&(await past.innerText()).includes('Season 1')&&(await past.innerText()).includes('Aurora Federation won')&&(await past.innerText()).includes('7 turns')&&await samDialog.getByRole('button',{name:/Start season/}).count()===0,'Any player can open the season record and see past results');
+ check((await samDialog.getByText(/To win: 3 colonies and 6 collectors/).innerText()).includes('turn 30')&&await samDialog.getByLabel('Colonies to win').count()===0,'A player sees the winning condition but cannot edit it');
  await samDialog.getByRole('button',{name:'Close'}).click();
 
  await ownerPage.getByRole('button',{name:'Season 2',exact:true}).click();
  const startThird=ownerDialog.getByRole('button',{name:/Start season 3/});
  check(await startThird.isDisabled()&&await ownerDialog.getByText('This season is still being played.',{exact:false}).count()===1,'An undecided season cannot be replaced until ending it early is ticked');
+ await ownerDialog.getByLabel('Colonies to win').fill('2');await ownerDialog.getByLabel('Collectors to win').fill('5');await ownerDialog.getByLabel(/Turn limit/).fill('0');
+ await ownerDialog.getByRole('button',{name:'Use for season 2'}).click();await ownerPage.getByText('Winning condition saved for season 2.').waitFor();
+ const edited=(await sam.call('campaign')).json.campaign.victory;
+ check(edited.colonies===2&&edited.collectors===5&&edited.turnLimit===0,'The owner can change the winning condition from the season dialog before the first turn resolves');
+ await ownerDialog.getByLabel('Colonies to win').fill('5');await ownerDialog.getByLabel('Collectors to win').fill('10');await ownerDialog.getByLabel(/Turn limit/).fill('21');
+ await ownerPage.screenshot({path:resolve(folder,'winning-condition.png')});
  await ownerDialog.getByLabel(/End season 2 now, without a winner/).check();await startThird.click();
  await ownerPage.getByText('Season 3 has begun on a new map.').waitFor();
  const third=(await owner.call('campaign')).json.campaign;
+ check(third.victory.colonies===5&&third.victory.collectors===10&&third.victory.turnLimit===21&&third.goal===10,'The owner chooses the winning condition for the next season when starting it');
  check(third.season===3&&third.history.length===2&&third.history[1].winner===null&&third.history[1].season===2&&linkText(third)!==linkText(second),'Ending a season early records it without a winner and starts the next on another map');
  await ownerPage.getByRole('button',{name:'Season 3',exact:true}).click();
  check((await ownerDialog.locator('.seasonHistory li').first().innerText()).includes('Ended early, no winner'),'The record shows a season that was ended early');
  await ownerPage.screenshot({path:resolve(folder,'season-record.png')});
  await browser.close();browser=null;await stop();await start(accounts);
  const reopened=(await owner.call('campaign')).json.campaign;
- check(reopened.season===3&&reopened.history.length===2&&linkText(reopened)===linkText(third),'The season, its map and the history survive a server restart');
+ check(reopened.season===3&&reopened.history.length===2&&linkText(reopened)===linkText(third)&&reopened.victory.colonies===5&&reopened.victory.turnLimit===21,'The season, its map, its winning condition and the history survive a server restart');
  await stop();
 
  // Clan-key development servers: the fixed original map by default, and season control only for local test sessions.

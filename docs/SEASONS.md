@@ -5,8 +5,30 @@ victory. When it is decided, the campaign owner starts the next season on a new 
 
 ## How a season ends
 
-A season is decided when a clan holds 4 colonies and 8 collectors at the end of a turn. Two clans reaching that
-in the same turn share the victory. No further turns resolve and no more orders are accepted.
+A season is decided when a clan meets the **winning condition** at the end of a turn. Two clans meeting it in the
+same turn share the victory. No further turns resolve and no more orders are accepted.
+
+## The winning condition
+
+The game creator chooses it. It has three settings:
+
+| Setting | Standard | Allowed |
+| --- | --- | --- |
+| Colonies to win | 4 | 2 to 12 |
+| Collectors to win | 8 | from the number of colonies up to 60 |
+| Turn limit | none (0) | 5 to 365 turns |
+
+With a turn limit, a season nobody has won by the end of that turn goes to the clan with more colonies, then more
+collectors. Equal clans share the victory.
+
+- **Who sets it:** the campaign owner (on a clan-key development server, a local test session), in the season
+  dialog. A hosted server can also be given starting values with the `Victory` settings in
+  [HOSTING.md](HOSTING.md).
+- **When:** for the current season, only until its first turn resolves, so nobody has planned around a rule that
+  then changes. For the next season, when starting it. A season keeps the previous condition unless a new one is
+  given.
+- Both clans always see the current condition on the command deck and in the season dialog, and get a report when
+  it changes.
 
 Both clans then see the **victory screen**: the result, the final standings of both clans (colonies, collectors,
 ships), how many turns it took and the date. Closing it leaves the final map on screen with a results banner;
@@ -50,7 +72,12 @@ A save from before seasons existed loads as season 1 with no history and is othe
 family playtest is not touched by this work. If a campaign on the original fictional map is later continued into
 a new season, that season uses the real-star map.
 
-## Open questions for the owner
+## Owner decisions (2026-11-26)
 
-- Should anything be earned from one season to the next (titles, a small head start), or is the record enough?
-- Should a season have a time limit, so it lasts "a few weeks" even if nobody reaches the victory condition?
+- Nothing is earned from one season to the next; the record is enough.
+- The winning condition is configured by the game creator.
+
+## Open question for the owner
+
+- How a season that reaches its turn limit is decided. Built: more colonies, then more collectors, otherwise
+  shared. This tie-break was chosen by the developer as the simplest fair rule and has not been confirmed.

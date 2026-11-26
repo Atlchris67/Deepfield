@@ -23,7 +23,11 @@ int RandomMapSeed()=>RandomNumberGenerator.GetInt32(1,int.MaxValue);
 int NewMapSeed()=>builder.Configuration.GetValue<int?>("MapSeed")??(authMode=="accounts"?RandomMapSeed():0);
 // A newly created hosted campaign with personal accounts starts on the real-star map unless LegacyMap=true.
 // An existing database row is never replaced, so this affects only a campaign that does not exist yet.
-Game NewGame()=>(string.IsNullOrEmpty(connection) && builder.Environment.IsDevelopment()) || (authMode=="accounts" && !builder.Configuration.GetValue("LegacyMap",false))
+// The winning condition of a new campaign. The game creator can change it before the first turn resolves and for each later season.
+VictoryRule? ConfiguredVictory()=>builder.Configuration.GetSection("Victory").Exists()
+    ? new VictoryRule(builder.Configuration.GetValue("Victory:Colonies",4),builder.Configuration.GetValue("Victory:Collectors",8),builder.Configuration.GetValue("Victory:TurnLimit",0)).Validated() : null;
+Game NewGame(){var game=NewCampaign();game.Victory=ConfiguredVictory();return game;}
+Game NewCampaign()=>(string.IsNullOrEmpty(connection) && builder.Environment.IsDevelopment()) || (authMode=="accounts" && !builder.Configuration.GetValue("LegacyMap",false))
     ? Rules.CreateFromMap(RealStarMap.Generate(NewMapSeed()),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0))
     : Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0));
 IGameStore store;
@@ -128,7 +132,13 @@ app.MapGet("/api/campaign",(Delegate)(Func<HttpContext,Task<IResult>>)(async c=>
 app.MapPost("/api/admin/season",async(HttpContext c,NextSeason body)=>
 {
     if(!CanStartSeason(c)) return Results.NotFound();
-    return Results.Ok(new{season=await CampaignStore(c).Execute(g=>{Seasons.StartNext(g,body.Season,body.MapSeed??RandomMapSeed(),DateTimeOffset.UtcNow,body.EndEarly);return g.Season;})});
+    return Results.Ok(new{season=await CampaignStore(c).Execute(g=>{Seasons.StartNext(g,body.Season,body.MapSeed??RandomMapSeed(),DateTimeOffset.UtcNow,body.EndEarly,body.Victory);return g.Season;})});
+});
+app.MapPost("/api/admin/victory",async(HttpContext c,SetVictory body)=>
+{
+    if(!CanStartSeason(c)) return Results.NotFound();
+    if(body.Victory is null) return Results.BadRequest(new{error="A winning condition is required."});
+    return Results.Ok(new{victory=await CampaignStore(c).Execute(g=>{Seasons.SetVictory(g,body.Season,body.Victory);return g.Victory;})});
 });
 app.MapPut("/api/orders",async(HttpContext c,Submission body)=>Results.Ok(new{revision=await CampaignStore(c).Execute(g=>
 {
@@ -165,6 +175,7 @@ app.MapFallbackToFile("index.html");
 app.Run();
 public record BoardPost(string Id,string? Author,string Text);
 public record Advance(int Turn);
-public record NextSeason(int Season,bool EndEarly=false,int? MapSeed=null);
+public record NextSeason(int Season,bool EndEarly=false,int? MapSeed=null,VictoryRule? Victory=null);
+public record SetVictory(int Season,VictoryRule? Victory);
 public record StarMapPreviewRequest(int Seed,int SystemCount,int Width,int Height,int MinimumSeparation,int NearestNeighborLinks,int PlayerCount,bool Real=false);
 public record StartGeneratedCampaign(string Id,int GeneratorVersion,StarMapPreviewRequest? Preview,int LogisticsVersion=0,int[]? IndustrialFocus=null,int? CombatVersion=null);
