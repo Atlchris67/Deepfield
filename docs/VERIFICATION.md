@@ -18,7 +18,7 @@ Isolated checkout `Deepfield-scouts`, branch `feature/scout-isr`; no running-pla
 
 - C# build passed with zero warnings/errors; all 43 prior engine/persistence checks plus 27 reconnaissance/migration checks passed.
 - 31 live API/browser checks passed on port 5097, including scout construction, a server-committed mission with its response deliberately dropped, safe retry, historical report rendering/aging, and cross-clan UI/data isolation.
-- TypeScript build/unused checks and Vite production build passed. Mobile intelligence screenshot inspected (`test-results/scout-intelligence-mobile.png`). The browser fixture deliberately uses 100% return rates for its full-report scenario; engine fixtures separately verify 90/65/35 defaults and deterministic destruction for every tier.
+- TypeScript build/unused checks and Vite production build passed. Mobile intelligence screenshot inspected (`test-results/scout-intelligence-mobile.png`). The browser fixture deliberately uses 100% return rates for its full-report scenario; the original engine fixtures verified the then-current 90/65/35 defaults. The current recon suite instead checks guaranteed distant return for new campaigns, unchanged stored odds for existing saves, and loss cases for close and deep.
 - Paired hidden-state fixtures produce equal views, estimates, legal mission validation and AI plans. Request IDs, order permutations, unrelated orders and resolution wall-clock changes cannot reroll mission outcomes.
 - Schema-1 fixture migration preserves pending orders/receipt comparisons, fleet counts and deadline, invents no historical intelligence, and commits through the file store. Reconnaissance loss/report persistence is verified across reopening and duplicate resolution.
 - PostgreSQL integration remains unexecuted without a disposable server. No merge or deployment.
@@ -149,3 +149,14 @@ Aggregate `npm.cmd run test:frontend --prefix web` passed 122 checks: 34 fleet v
 New regression coverage includes prefilled values, own-reservation exclusion with other reservations retained, stable replacement identity/order, repeated Save, source/hull/action changes, numeric limits, ownership/budget/scout/defense/hull caps, cancellation via Cancel/Escape/Close/Back, cancellation during validation, changed server turn, refresh invalidation, leaving the session, ambiguous submission locks, committed-order exclusion and omission of local metadata from API payloads. All browser requests were intercepted fixture responses; no live API, real keys or game saves were used.
 
 No backend code changed or Deepfield executable ran. Full real-API integration remains unrun under the existing execution limitation; synthetic tests do not replace that evidence. Local launchSettings.json changes and the .vs directory remain untouched and excluded from commits. The aggregate runner was briefly slow but completed successfully; no current frontend validation blocker remains.
+
+## Habitability and colonization planner - 2026-11-26
+
+Run in the `Deepfield-scouts` worktree on `feature/habitability-colonization`. No existing campaign save was used; every suite writes disposable saves under the temp folder or `test-results`.
+
+- `dotnet build Deepfield.sln --disable-build-servers`: succeeded, 0 warnings, 0 errors. The first build after a frontend source change fails once in the static web assets step because the frontend is rebuilt with a new file hash mid-build; an immediate second build succeeds.
+- `dotnet run --project tests/Deepfield.Checks`: exit code 0, 219 PASS lines, no failures. PostgreSQL integration was skipped because `DEEPFIELD_TEST_POSTGRES` is not configured.
+- `npm run lint` and `npm run build` in `web`: both passed.
+- Web test scripts that passed: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, star-map-component 13, real-sky-rotation-component 25, real-sky-projection 5, material-reservations 19, real-campaign-api 14, generated-campaign-api 19, plus system-panel-component and planet-scale (no per-check count).
+- Web test scripts that failed, both against code already committed before this work: `planet-api.mjs` (5 checks pass, then it waits for a "Campaign sky" region that no longer exists in the interface) and `smoke.mjs` (2 checks pass, then it requests a fictional map preview, which the API now rejects in favour of real-star maps). Neither is wired into an npm script. They need updating before milestone 6.
+- The guaranteed distant scout return applies to newly created campaigns only. Existing saves keep their stored rates, and a save with no stored rates falls back to the original 90/65/35. Recon checks cover all three cases.
