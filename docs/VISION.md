@@ -20,7 +20,7 @@ These were decided by the owner and are not open for reinterpretation by contrib
 
 ### Open owner decisions
 
-- **Which rules belong to simple mode and which to advanced mode.** The owner has decided *who* chooses (the game starter, at setup). The exact rule list for each mode is still to be proposed and confirmed before milestone 4 is built.
+- **Whether habitability should affect colonies.** The split between simple and advanced mode was confirmed by the owner on 2026-11-26 and is recorded in [MODES.md](MODES.md). The proposal the owner confirmed said habitability "affects how well a colony does"; that was wrong. In the code it is information only, in both modes, and it was left that way. Giving it an effect is a new rule for the owner to decide.
 - **Which cloud provider.** Postponed along with the move to the cloud.
 - **How a season at its turn limit is decided.** Decided 2026-11-26: nothing is earned between seasons (the record is enough), and the game creator configures the winning condition, including an optional turn limit ([SEASONS.md](SEASONS.md)). Still unconfirmed: the tie-break at the turn limit, built as more colonies, then more collectors, otherwise shared.
 

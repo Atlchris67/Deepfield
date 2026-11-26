@@ -113,7 +113,8 @@ See [Visual Studio build instructions](docs/VISUAL_STUDIO.md) for solution detai
 4. Commit the complete order list. A teammate's newer revision prevents stale overwrites. Refresh explicitly replaces your local draft. A failed network submission can be retried with the same request ID.
 5. At the deadline all movements apply simultaneously, then fleets inflict equal losses. Survivors destroy an opposing colony's collectors and may found a colony. Fleets crossing on links pass each other; combat happens at stars. Equal fleets mutually destroy. Ungarrisoned colonies have no defense.
 6. Hold at least **4 colonies and 8 collectors** to win, unless the game creator chose a different winning condition. Both clans reaching this threshold together share victory. Read reports after resolution.
-7. When a clan wins, both clans see the victory screen with final standings. The campaign owner then starts the next **season** on a new map; see [docs/SEASONS.md](docs/SEASONS.md).
+7. A campaign is played in **simple** or **advanced** mode, chosen by the game creator; the steps above describe simple mode. See [docs/MODES.md](docs/MODES.md).
+8. When a clan wins, both clans see the victory screen with final standings. The campaign owner then starts the next **season** on a new map; see [docs/SEASONS.md](docs/SEASONS.md).
 
 Topology and coordinates are public; unknown star names and current intelligence are filtered. “Charted” never means “safe.” The Type III goal is intentionally a compact gameplay abstraction, not a scientific scale simulation.
 

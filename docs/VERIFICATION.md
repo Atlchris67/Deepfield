@@ -1,5 +1,25 @@
 # Verification — 2026-10-14, Piedmont
 
+## Simple and advanced modes (milestone 4) - 2026-11-26
+
+Branch `feature/modes`, stacked on `feature/seasons`. No deployment. The running playtest, its keys and its save were not touched; tests used throwaway saves under `test-results/` or the system temp folder and the same disposable embedded PostgreSQL as before.
+
+- `dotnet build Deepfield.sln --no-incremental`: 0 warnings, 0 errors.
+- `Deepfield.Checks` with `DEEPFIELD_TEST_POSTGRES` set: **330 checks passed**: the 306 from milestone 3 plus **24 mode checks**.
+- Mode checks cover: what each mode turns on; simple mode has no material stock, mines, stockpiles or typed fleets and refuses defenses, mines, settlement growth, gates, freighters, hull classes and ship design; a simple-mode turn builds ships, collectors and scouts for credits alone and founds a colony; computer-played clans play simple mode for 25 turns and leave a valid save; advanced mode accepts advanced orders; unknown modes, a mode on the fictional map and industrial focus in simple mode are refused; a save whose mode does not match its rules is rejected; a campaign from before modes has no mode and keeps its rules into later seasons; the mode is kept or changed across seasons; before the first turn the mode can be changed on the same map, keeping season, deadline, winning condition, history, channels and AI seats.
+- `npm run test:seasons`: **37 checks** (6 new): a hosted campaign starts in simple mode; only the owner can change the mode; switching to advanced and back before the first turn; a player sees the mode but cannot edit it; the command deck offers no defenses or mines in simple mode; the owner picks advanced for the next season and it survives a restart.
+- `generated-campaign-api`: **22 checks** (was 19): starting in simple and in advanced mode through the local tool, a retry cannot change the mode, simple mode refuses a defense order. `star-map-component`: 13 checks, two rewritten for the single mode picker.
+- All other suites unchanged and passing: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, real-sky-rotation-component 25, material-reservations 19, real-sky-projection, system-panel-component, planet-scale, planet-api 14, real-campaign-api 14, smoke 73, accounts 30 (37 with the hosted PostgreSQL configuration).
+
+Problems found while verifying:
+
+- **Earlier results for one suite were against an old build.** `generated-campaign-api` runs `bin/Release` unless `DEEPFIELD_TEST_API_DLL` is set. The Release build on this machine dated from the milestone 2 publish check, so the "generated-campaign-api 19" lines recorded for milestones 2 and 3 did not exercise that milestone's code. From this milestone on it is run with `DEEPFIELD_TEST_API_DLL` pointing at the Debug build and `DEEPFIELD_TEST_WEBROOT` at a fresh web build. It passes on the current code, which contains milestones 2 and 3.
+- **Save replace could fail under load.** Twice a request failed with `IOException: Unable to remove the file to be replaced` while another process briefly held the save file. `FileGameStore` now retries the replace for up to a second. After the fix the suite passed four runs in a row; the cause (a scanner or indexer on this machine) is inferred, not proven.
+- **One older rules check fails by chance.** `RealCampaignChecks` "New balance did not improve early construction and fuel supply" failed in 2 of 20 consecutive runs of the full suite. It compares two campaigns that each draw random deposits. Neither that check nor `Materials.cs` was changed by this work. It is left as is and should be made deterministic separately.
+- `planet-component` timed out once loading its page while the machine was busy and passed on two reruns.
+
+Not verified: any game played by people in either mode; balance of advanced mode with the tapered economy on the real-star map (the local tool previously created advanced-style campaigns with the flat economy); the mode picker on phones; the `Mode` hosting setting beyond one manual try on a throwaway local server (`Mode=Advanced` produced an advanced campaign); anything in a real hosted environment.
+
 ## Seasons and replayability (milestone 3) - 2026-11-26
 
 Branch `feature/seasons`, stacked on `feature/hosting-accounts`. No deployment. The running playtest, its keys and its save were not touched; tests used throwaway saves under `test-results/` or the system temp folder, loopback ports 5096 to 5098, and the same disposable embedded PostgreSQL as milestone 2.

@@ -35,10 +35,10 @@ Set these as environment variables on the host. Never commit real values.
 | `Auth__Mode` | No | `accounts` is the default outside Development. `keys` keeps the old shared clan keys and then needs `Teams__0__Key` / `Teams__1__Key`. |
 | `Auth__AttemptsPerMinute` | No | Sign-in, setup, invitation and reset attempts allowed per client address per minute. Default `20`. |
 | `Https__Require` | No | Defaults to `true` with accounts outside Development: plain HTTP is redirected to HTTPS and HSTS is sent. |
-| `LegacyMap` | No | `true` starts a new campaign on the original fictional map instead of the real-star map. |
+| `Mode` | No | `simple` (default) or `advanced`: the rules of a **new** campaign. The owner can change it in the game before the first turn resolves and for each later season. See [MODES.md](MODES.md). |
 | `MapSeed` | No | Fixes the layout of a **new** campaign. Without it a hosted campaign gets a random layout. `0` is the original fixed layout. Later seasons always get a new random layout. |
 | `Victory__Colonies`, `Victory__Collectors`, `Victory__TurnLimit` | No | Winning condition of a **new** campaign (standard: 4, 8, and 0 for no turn limit). The owner can change it in the game before the first turn resolves and for each later season. |
-| `EmpireAi`, `EconomyVersion`, `CombatVersion` | No | Rules for a **new** campaign, as described in the README. They do not change an existing campaign. |
+| `EmpireAi` | No | Whether the second clan of a **new** campaign is computer-played. It does not change an existing campaign. |
 
 Generate a setup key in PowerShell:
 
