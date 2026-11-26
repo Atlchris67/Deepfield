@@ -12,7 +12,13 @@ public sealed class FileGameStore(string path, Func<Game> create) : IGameStore
         var temp=full+".tmp";
         await using(var stream=new FileStream(temp,FileMode.Create,FileAccess.Write,FileShare.None,4096,FileOptions.WriteThrough))
         {await JsonSerializer.SerializeAsync(stream,game);stream.Flush(true);}
-        if(File.Exists(full))File.Replace(temp,full,null);else File.Move(temp,full);
+        // On Windows a scanner or indexer can hold the save open for a moment; the lock file above only excludes
+        // other Deepfield writers. Retry briefly instead of failing the player's request.
+        for(var attempt=0;;attempt++)
+        {
+            try { if(File.Exists(full))File.Replace(temp,full,null);else File.Move(temp,full); return; }
+            catch(Exception ex) when((ex is IOException or UnauthorizedAccessException) && attempt<40) { await Task.Delay(25); }
+        }
     }
     public async Task<T> Execute<T>(Func<Game,T> operation, bool write = true)
     {
