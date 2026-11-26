@@ -15,12 +15,14 @@ These were decided by the owner and are not open for reinterpretation by contrib
 | Campaign length | A campaign lasts a few weeks. After that, play continues in seasons. |
 | Players | Two clans now, designed so more can be added. |
 | Missing players | AI fills in for players who are absent. |
-| Hosting | Cloud hosting with HTTPS and PostgreSQL. |
-| Identity | Personal accounts, replacing shared clan keys. |
+| Hosting | Cloud hosting with HTTPS and PostgreSQL. The provider is chosen at deploy time, so the build stays provider-neutral: one container image and a PostgreSQL connection string. Nothing is deployed without the owner's go-ahead. See [HOSTING.md](HOSTING.md). |
+| Identity | Personal accounts, replacing shared clan keys. Sign-in is email and password. Players join by an invitation link from the owner that is tied to a clan. Passwords are stored hashed. No outside sign-in or email service is used. |
 
 ### Open owner decisions
 
 - **What separates simple mode from advanced mode.** Undecided. Milestone 4 cannot start until the owner settles which rules belong to each mode.
+- **Which cloud provider.** Deliberately left until deploy time. Needed before milestone 2 can go live.
+- **Whether the running family playtest moves to the hosted server** or a fresh campaign starts there. The playtest and its save are untouched until the owner decides.
 
 ## Stars! clean-room rule
 

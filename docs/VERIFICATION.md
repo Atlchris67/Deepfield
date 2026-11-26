@@ -1,5 +1,27 @@
 # Verification — 2026-10-14, Piedmont
 
+## Hosting and accounts (milestone 2, prepared only) - 2026-11-26
+
+Branch `feature/hosting-accounts`. Nothing was deployed. No cloud resource, DNS record or public address was created. The running playtest, its keys and its save were not touched; every test used throwaway saves under `test-results/` or the system temp folder, and loopback ports 5097 to 5099.
+
+PostgreSQL was a disposable embedded server (PostgreSQL 19.0, npm package `embedded-postgres`) started on loopback port 5546 in a scratch folder outside the repository and deleted after each run. This is the first time the PostgreSQL code paths have been executed at all.
+
+- `dotnet build Deepfield.sln`: 0 warnings, 0 errors. The first build after a frontend change still fails once in static web assets and passes when repeated.
+- `Deepfield.Checks` with `DEEPFIELD_TEST_POSTGRES` set: exit code 0, **266 checks passed**. Groups: 50 engine and persistence (now including the PostgreSQL campaign store, single-connection pool and entropy migration), 62 reconnaissance and migration, 14 economy and defense, 19 ship design, 25 typed fleet, 8 preview storage, 17 local turns, 17 planet statistics, 16 star map, 10 generated campaign, **40 account checks** (32 rules, 4 file store, 4 PostgreSQL store).
+- Without the variable the suite still passes and prints that the PostgreSQL checks were skipped (36 account checks).
+- Web lint and production build: pass.
+- New `npm run test:accounts` (`web/tests/accounts-api.mjs`): **30 API and browser checks** with a real server and Microsoft Edge: owner setup with the setup key, invitation link, joining the invited clan, owner-only controls, clan channel signed with the account name (a forged author is ignored), sign-out, uniform sign-in errors, one-time reset link, moving and disabling a player, restart persistence, sign-in rate limit, and clan keys still the default in local development.
+- The same test with `DEEPFIELD_TEST_POSTGRES` set adds **7 hosted checks (37 total)** in Production mode: starts without clan keys, plain HTTP redirects to HTTPS (308) behind a trusted proxy, HSTS is sent, health and readiness answer over plain HTTP, the cookie is `__Host-` prefixed, Secure, HttpOnly and SameSite=Strict, a new database gets a real-star campaign, local turn controls are absent, and campaign, accounts and sessions survive a restart.
+- Existing web suites, all passing: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, star-map-component 13, real-sky-rotation-component 25, material-reservations 19, real-sky-projection, system-panel-component, planet-scale, planet-api 14, real-campaign-api 14, generated-campaign-api 19, smoke 73. `draft-session` and `draft-edit-ui` needed one line each so their fake server answers the new sign-in-mode request.
+- Publish layout: `dotnet publish -c Release -p:BuildDeepfieldFrontend=false` plus the web build copied into `wwwroot`, run in Production against the disposable PostgreSQL behind simulated proxy headers: readiness, the page, its script bundle and the account state endpoint all answered 200.
+
+Not verified, stated plainly:
+
+- **The `Dockerfile` has never been built.** Docker is not installed on this machine. Only the equivalent publish layout above was run.
+- No cloud provider, real certificate, real proxy or managed PostgreSQL was involved. Forwarded-header handling was tested with hand-written headers only.
+- No security review by a second party. No load testing.
+- Windows Smart App Control intermittently blocked freshly built, unsigned test binaries on this machine. Rebuilding the affected project produced a build that loaded. The setting was not changed.
+
 ## Standalone counter-combat lab — 2026-10-15
 
 `dotnet run --project tools/Deepfield.CombatLab --disable-build-servers` passed **177,199 assertions**, exhaustively comparing **59,049 mirrored composition pairs** and all **20 directed equal-budget matchups**. Checked input immutability, survivor bounds, maximum-size arithmetic and malformed counts. The project is built by the solution but not referenced by the API/engine; it changes no campaign or save behavior. No browser rerun is needed for this console-only increment; the 34-check UI suite from the preceding commit remains the latest app evidence.

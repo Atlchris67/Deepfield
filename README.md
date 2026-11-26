@@ -22,7 +22,7 @@ The **Clan intelligence** panel stores private reports with turn, timestamp and 
 
 An original, small daily-turn space strategy game for family clans. Guide the Aurora Federation or Ember Empire from a shared homeworld toward a simplified Kardashev Type III victory. The playable slice includes exploration, automatic colony expeditions, ship construction, simultaneous combat, collectors, private clan messages and turn reports. Empire runs as AI by default; both clans can be human-controlled.
 
-**Status:** local MVP; no live deployment. One shared homeworld, treasury and order list per clan is provisional. No license has been selected.
+**Status:** local MVP; no live deployment. Hosted play with personal accounts (email and password, by invitation) is built and verified locally but not deployed: see [docs/HOSTING.md](docs/HOSTING.md). Local development still signs in with the two clan keys described below. One shared homeworld, treasury and order list per clan is provisional. No license has been selected.
 
 ## Run locally on Windows
 
@@ -151,7 +151,7 @@ The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also 
 
 ## Remaining scope
 
-PostgreSQL integration needs execution against an available disposable server. Before public hosting: individual users/invitations, membership and key rotation, rate limits, operational backup/recovery, and explicit proxy/HTTPS/access configuration. No DNS, Cloudflare Tunnel, firewall, external accounts, production credentials or persistent services have been configured. Additional campaigns, richer ship designs, diplomacy, balance tuning and accessibility testing are follow-up work. Federation/Empire use original names and styling, with no franchise assets.
+PostgreSQL storage, personal accounts with invitations, sign-in rate limits and proxy/HTTPS handling are implemented and verified against a disposable PostgreSQL server (see `docs/VERIFICATION.md`); the container image itself is unbuilt and nothing is deployed. Before public hosting: choose the provider, build the image, rehearse backup and restore, and get an independent security review ([docs/HOSTING.md](docs/HOSTING.md)). No DNS, Cloudflare Tunnel, firewall, external accounts, production credentials or persistent services have been configured. Additional campaigns, richer ship designs, diplomacy, balance tuning and accessibility testing are follow-up work. Federation/Empire use original names and styling, with no franchise assets.
 
 The repository now has an agreed documentation baseline on main. Development is published as stacked draft PRs; none is merged automatically.
 
