@@ -56,27 +56,52 @@ public static class Seasons
     /// Replaces the campaign in place with the next season: a new real-star map from <paramref name="mapSeed"/>,
     /// the same clans and rule versions, and the finished season added to the history.
     /// </summary>
-    public static void StartNext(Game g, int expectedSeason, int mapSeed, DateTimeOffset now, bool endEarly = false, VictoryRule? victory = null)
+    public static void StartNext(Game g, int expectedSeason, int mapSeed, DateTimeOffset now, bool endEarly = false, VictoryRule? victory = null,
+        string? mode = null, int[]? industrialFocus = null)
     {
         victory = victory?.Validated() ?? g.Victory;
         // The expected season makes a repeated request harmless: the second one no longer matches.
         if (expectedSeason != g.Season) throw new RuleException("That season has already been replaced. Refresh to see the current one.");
         if (g.Winner is null && !endEarly) throw new RuleException("This season has no winner yet. Confirm that you want to end it early.");
-        var next = Rules.CreateFromMap(RealStarMap.Generate(mapSeed), now, false, g.EconomyVersion, g.CombatVersion,
-            g.LogisticsVersion, g.GeneratedMap?.RealCatalogVersion is null ? null : g.Clans.Select(c => c.IndustrialFocus).ToArray());
+        // A campaign from before modes keeps its saved rule versions unless the game creator now picks a mode.
+        mode = mode is null ? g.Mode : Modes.Validated(mode);
+        var map = RealStarMap.Generate(mapSeed);
+        var next = mode is null
+            ? Rules.CreateFromMap(map, now, false, g.EconomyVersion, g.CombatVersion, g.LogisticsVersion,
+                industrialFocus ?? (g.GeneratedMap?.RealCatalogVersion is null ? null : g.Clans.Select(c => c.IndustrialFocus).ToArray()))
+            : Modes.Create(map, now, false, mode, mode == Modes.Simple ? industrialFocus : industrialFocus ?? g.Clans.Select(c => c.IndustrialFocus).ToArray());
         next.Season = g.Season + 1;
         next.Started = now;
         next.Victory = victory;
         next.History = [.. g.History, Record(g, now)];
         if (next.History.Count > MaximumHistory) next.History.RemoveRange(0, next.History.Count - MaximumHistory);
+        Replace(g, next, $"Season {next.Season} begins on a new map. Your clan starts again from one homeworld. Rules: {Modes.Name(next.Mode)}. To win: {Rules.Victory(next).Describe()}.");
+    }
+
+    /// <summary>
+    /// Changes the mode of the current season by setting it up again on the same map. Allowed only before its first
+    /// turn resolves; orders already submitted for that turn are discarded because the rules they were written for changed.
+    /// </summary>
+    public static void SetMode(Game g, int expectedSeason, string mode, DateTimeOffset now, int[]? industrialFocus = null)
+    {
+        if (expectedSeason != g.Season) throw new RuleException("That season has already been replaced. Refresh to see the current one.");
+        if (g.Winner is not null || g.Turn != 1) throw new RuleException("The mode can only be changed before the first turn of a season resolves. Choose it when starting the next season.");
+        if (g.GeneratedMap?.RealCatalogVersion is null) throw new RuleException("This campaign uses the original map. Choose a mode when starting the next season.");
+        var next = Modes.Create(RealStarMap.Generate(g.GeneratedMap.Seed), now, false, Modes.Validated(mode), industrialFocus);
+        next.Season = g.Season; next.Started = g.Started; next.Deadline = g.Deadline; next.Victory = g.Victory; next.History = g.History;
+        Replace(g, next, $"Season {g.Season} was set to {Modes.Name(mode)} before its first turn. Orders already submitted this turn were cleared.");
+    }
+
+    // Carries the clans over and copies the new state into the loaded instance, because stores save the instance they loaded.
+    private static void Replace(Game g, Game next, string report)
+    {
         for (var team = 0; team < g.Clans.Count; team++)
         {
             next.Clans[team].Name = g.Clans[team].Name;
             next.Clans[team].Ai = g.Clans[team].Ai;
             next.Clans[team].Messages = g.Clans[team].Messages;
-            next.Clans[team].Reports.Insert(0, $"Season {next.Season} begins on a new map. Your clan starts again from one homeworld. To win: {Rules.Victory(next).Describe()}.");
+            next.Clans[team].Reports.Insert(0, report);
         }
-        // Stores save the instance they loaded, so the new season is copied into it.
         foreach (var property in typeof(Game).GetProperties().Where(p => p.CanRead && p.CanWrite))
             property.SetValue(g, property.GetValue(next));
     }

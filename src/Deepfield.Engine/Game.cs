@@ -73,6 +73,8 @@ public class Game
     public List<SeasonRecord> History { get; set; } = [];
     // Null is the original rule: 4 colonies and 8 collectors, no turn limit.
     public VictoryRule? Victory { get; set; }
+    // Null is a campaign from before modes: it keeps the rule versions above exactly as saved.
+    public string? Mode { get; set; }
 }
 public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null, int? Defense = null, int[][]? Fleets = null, PlanetStats? Statistics = null,
     int? Mines = null, int? SettlementSize = null, int? HomePlanetId = null, int[]? MaterialYield = null,
@@ -83,7 +85,7 @@ public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, str
     IReadOnlyList<StarMapLink>? Links = null, int? MapWidth = null, int? MapHeight = null,
     int? RealCatalogVersion = null, IReadOnlyList<CatalogSystem>? RealSystems = null, int[]? Materials = null,
     int IndustrialFocus = 0, int LogisticsVersion = 0, string[]? ShipDesigns = null,
-    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null, VictoryRule? Victory = null);
+    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null, VictoryRule? Victory = null, string? Mode = null);
 public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
@@ -161,7 +163,7 @@ public static class Rules
             g.Stars.Select(s => { var visible = s.Owner == team || s.Ships[team] > 0; var known = c.Known.Contains(s.Id);
                 var star = new StarView(s.Id, known || g.GeneratedMap?.RealCatalogVersion != null ? s.Name : "Uncharted", s.X, s.Y, known, visible, visible ? s.Owner : null, visible ? s.Collectors : null, visible ? [..s.Ships] : null, visible ? [..s.Scouts] : null, visible ? s.Defense : null, visible ? s.Fleets?.Select(f=>f.ToArray()).ToArray() : null,
                     Mines: visible ? s.Mines : null, SettlementSize: visible ? s.SettlementSize : null, HomePlanetId: visible ? s.HomePlanetId : null,
-                    MaterialYield: visible && s.Owner == team && g.GeneratedMap is { RealCatalogVersion: not null } ? Materials.Production(g, s) : null,
+                    MaterialYield: visible && s.Owner == team && Modes.Industry(g) ? Materials.Production(g, s) : null,
                     Stockpile: s.Owner == team ? s.Stockpile?.ToArray() : null,
                     Gate: visible ? s.Gate : null,
                     Freighters: s.Owner == team ? s.Freighters[team] : null,
@@ -176,7 +178,7 @@ public static class Rules
             RealSystems: g.GeneratedMap?.RealSystems?.Select(host => host with { Planets = c.Known.Contains(host.Id) ? host.Planets : [] }).ToArray(),
             Materials: c.Materials?.ToArray(), IndustrialFocus: c.IndustrialFocus, LogisticsVersion: g.LogisticsVersion,
             ShipDesigns: [..c.ShipDesigns],
-            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g)) { Goal = Victory(g).Collectors };
+            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g), Mode: g.Mode) { Goal = Victory(g).Collectors };
     }
     public static void Validate(View v, List<Order> orders)
     {
@@ -197,7 +199,9 @@ public static class Rules
             if (o.Cargo is not null && o.Kind != "transport") throw new RuleException("Cargo is only valid for transport orders.");
             if (o.Kind == "transport" && (o.Cargo is not { Length: Materials.Count } || o.Cargo.Any(amount => amount < 0 || amount > 10000)))
                 throw new RuleException("Transport requires six nonnegative material quantities.");
-            if (v.RealCatalogVersion is not null)
+            if (v.Mode == Modes.Simple && (o.Hull is not null || o.Kind is "defense" or "mine" or "settlement" or "freighter" or "gate" or "transport" or "refit"))
+                throw new RuleException("Simple mode has no defenses, mines, settlement growth, freight, gates or ship design.");
+            if (v.RealCatalogVersion is not null && v.Mode != Modes.Simple)
             {
                 var required = Materials.Cost(o);
                 if (o.Kind == "transport")

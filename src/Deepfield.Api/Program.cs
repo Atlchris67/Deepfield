@@ -21,13 +21,18 @@ var localTest=LocalTurns.Enabled(builder.Environment.IsDevelopment(),builder.Con
 // local development keeps the fixed layout unless MapSeed is set, so existing tests and habits are unchanged.
 int RandomMapSeed()=>RandomNumberGenerator.GetInt32(1,int.MaxValue);
 int NewMapSeed()=>builder.Configuration.GetValue<int?>("MapSeed")??(authMode=="accounts"?RandomMapSeed():0);
-// A newly created hosted campaign with personal accounts starts on the real-star map unless LegacyMap=true.
-// An existing database row is never replaced, so this affects only a campaign that does not exist yet.
 // The winning condition of a new campaign. The game creator can change it before the first turn resolves and for each later season.
 VictoryRule? ConfiguredVictory()=>builder.Configuration.GetSection("Victory").Exists()
     ? new VictoryRule(builder.Configuration.GetValue("Victory:Colonies",4),builder.Configuration.GetValue("Victory:Collectors",8),builder.Configuration.GetValue("Victory:TurnLimit",0)).Validated() : null;
 Game NewGame(){var game=NewCampaign();game.Victory=ConfiguredVictory();return game;}
-Game NewCampaign()=>(string.IsNullOrEmpty(connection) && builder.Environment.IsDevelopment()) || (authMode=="accounts" && !builder.Configuration.GetValue("LegacyMap",false))
+// A hosted campaign with personal accounts is created in a mode chosen by its creator: the Mode setting, or simple.
+// The owner can still change it in the game before the first turn resolves. Modes always use the real-star map.
+// A clan-key development server keeps the older rule-version settings unless Mode is set, so existing saves and tests are unchanged.
+// An existing save or database row is never replaced, so all of this affects only a campaign that does not exist yet.
+string? ConfiguredMode()=>builder.Configuration["Mode"] is {Length:>0} mode ? Modes.Validated(mode.ToLowerInvariant()) : authMode=="accounts" ? Modes.Simple : null;
+Game NewCampaign()=>ConfiguredMode() is {} mode
+    ? Modes.Create(RealStarMap.Generate(NewMapSeed()),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),mode)
+    : string.IsNullOrEmpty(connection) && builder.Environment.IsDevelopment()
     ? Rules.CreateFromMap(RealStarMap.Generate(NewMapSeed()),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0))
     : Rules.Create(builder.Configuration.GetValue("Seed",42017),DateTimeOffset.UtcNow,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),builder.Configuration.GetValue("CombatVersion",0));
 IGameStore store;
@@ -132,7 +137,12 @@ app.MapGet("/api/campaign",(Delegate)(Func<HttpContext,Task<IResult>>)(async c=>
 app.MapPost("/api/admin/season",async(HttpContext c,NextSeason body)=>
 {
     if(!CanStartSeason(c)) return Results.NotFound();
-    return Results.Ok(new{season=await CampaignStore(c).Execute(g=>{Seasons.StartNext(g,body.Season,body.MapSeed??RandomMapSeed(),DateTimeOffset.UtcNow,body.EndEarly,body.Victory);return g.Season;})});
+    return Results.Ok(new{season=await CampaignStore(c).Execute(g=>{Seasons.StartNext(g,body.Season,body.MapSeed??RandomMapSeed(),DateTimeOffset.UtcNow,body.EndEarly,body.Victory,body.Mode,body.IndustrialFocus);return g.Season;})});
+});
+app.MapPost("/api/admin/mode",async(HttpContext c,SetMode body)=>
+{
+    if(!CanStartSeason(c)) return Results.NotFound();
+    return Results.Ok(new{mode=await CampaignStore(c).Execute(g=>{Seasons.SetMode(g,body.Season,body.Mode??"",DateTimeOffset.UtcNow,body.IndustrialFocus);return g.Mode;})});
 });
 app.MapPost("/api/admin/victory",async(HttpContext c,SetVictory body)=>
 {
@@ -167,7 +177,7 @@ app.MapPost("/api/local/campaigns",async(HttpContext c,StartGeneratedCampaign bo
     if(body.Preview is null || body.GeneratorVersion!=StarMapGenerator.CurrentVersion) throw new RuleException("Preview a current star map before starting a campaign.");
     if(!body.Preview.Real) throw new RuleException("New campaigns use cataloged real star systems. Existing fictional campaigns remain available from their saved files.");
     var map=RealStarMap.Generate(body.Preview.Seed);
-    var game=await generatedCampaigns.Start(body.Id,map,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),body.CombatVersion??builder.Configuration.GetValue("CombatVersion",0),body.LogisticsVersion,body.IndustrialFocus);
+    var game=await generatedCampaigns.Start(body.Id,map,builder.Configuration.GetValue("EmpireAi",true),builder.Configuration.GetValue("EconomyVersion",0),body.CombatVersion??builder.Configuration.GetValue("CombatVersion",0),body.LogisticsVersion,body.IndustrialFocus,body.Mode is null?null:Modes.Validated(body.Mode));
     return Results.Ok(new {id=body.Id,campaign=Rules.Observe(game,Team(c))});
 });
 app.UseDefaultFiles(); app.UseStaticFiles();
@@ -175,7 +185,8 @@ app.MapFallbackToFile("index.html");
 app.Run();
 public record BoardPost(string Id,string? Author,string Text);
 public record Advance(int Turn);
-public record NextSeason(int Season,bool EndEarly=false,int? MapSeed=null,VictoryRule? Victory=null);
+public record NextSeason(int Season,bool EndEarly=false,int? MapSeed=null,VictoryRule? Victory=null,string? Mode=null,int[]? IndustrialFocus=null);
+public record SetMode(int Season,string? Mode,int[]? IndustrialFocus=null);
 public record SetVictory(int Season,VictoryRule? Victory);
 public record StarMapPreviewRequest(int Seed,int SystemCount,int Width,int Height,int MinimumSeparation,int NearestNeighborLinks,int PlayerCount,bool Real=false);
-public record StartGeneratedCampaign(string Id,int GeneratorVersion,StarMapPreviewRequest? Preview,int LogisticsVersion=0,int[]? IndustrialFocus=null,int? CombatVersion=null);
+public record StartGeneratedCampaign(string Id,int GeneratorVersion,StarMapPreviewRequest? Preview,int LogisticsVersion=0,int[]? IndustrialFocus=null,int? CombatVersion=null,string? Mode=null);

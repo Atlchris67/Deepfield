@@ -23,15 +23,17 @@ public sealed class GeneratedCampaigns(string directory)
     }
 
     public async Task<Game> Start(string id, GeneratedStarMap snapshot, bool ai, int economyVersion, int combatVersion,
-        int logisticsVersion = 0, int[]? industrialFocus = null)
+        int logisticsVersion = 0, int[]? industrialFocus = null, string? mode = null)
     {
         // Validate before touching the filesystem, even on a repeated request.
-        var candidate = Rules.CreateFromMap(snapshot, DateTimeOffset.UtcNow, ai, economyVersion, combatVersion, logisticsVersion, industrialFocus);
+        var candidate = mode is null
+            ? Rules.CreateFromMap(snapshot, DateTimeOffset.UtcNow, ai, economyVersion, combatVersion, logisticsVersion, industrialFocus)
+            : Modes.Create(snapshot, DateTimeOffset.UtcNow, ai, mode, industrialFocus);
         var path = PathFor(id);
         var created = new FileGameStore(path, () => candidate);
         return await created.Execute(game =>
         {
-            if (game.LogisticsVersion != candidate.LogisticsVersion || game.CombatVersion != candidate.CombatVersion ||
+            if (game.Mode != candidate.Mode || game.LogisticsVersion != candidate.LogisticsVersion || game.CombatVersion != candidate.CombatVersion ||
                 game.Clans.Select(c => c.IndustrialFocus).Where((value, index) => value != candidate.Clans[index].IndustrialFocus).Any() ||
                 game.GeneratedMap is null ||
                 JsonSerializer.Serialize(game.GeneratedMap) != JsonSerializer.Serialize(snapshot))

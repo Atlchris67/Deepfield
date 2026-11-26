@@ -39,9 +39,14 @@ public static class GameCodec
             game.Clans.Any(c => c.IndustrialFocus is < -2 or > 2 || c.ShipDesigns is not { Length: 5 } ||
                 c.ShipDesigns.Any(package => !ShipDesign.Packages.Contains(package))))
             throw new InvalidOperationException("Invalid campaign rules options.");
+        if (game.Mode is not (null or Modes.Simple or Modes.Advanced) || (game.Mode is not null && game.GeneratedMap?.RealCatalogVersion is null) ||
+            (game.Mode == Modes.Advanced && (game.EconomyVersion, game.CombatVersion, game.LogisticsVersion) != (1, 1, 1)) ||
+            (game.Mode == Modes.Simple && ((game.EconomyVersion, game.CombatVersion, game.LogisticsVersion) != (0, 0, 0) ||
+                game.Clans.Any(c => c.Materials is not null || c.IndustrialFocus != 0))))
+            throw new InvalidOperationException("Invalid campaign mode.");
         if (game.GeneratedMap?.RealCatalogVersion is not null && (game.GeneratedMap.RealCatalogVersion != RealStarMap.Version ||
             game.GeneratedMap.RealSystems is null ||
-            (game.LogisticsVersion == 0 && game.Clans.Any(c => c.Materials is not { Length: Materials.Count } || c.Materials.Any(n => n < 0))) ||
+            (game.LogisticsVersion == 0 && game.Mode != Modes.Simple && game.Clans.Any(c => c.Materials is not { Length: Materials.Count } || c.Materials.Any(n => n < 0))) ||
             (game.LogisticsVersion == 1 && (game.Clans.Any(c => c.Materials is not null) ||
                 game.Stars.Any(s => s.Stockpile is not null && (s.Stockpile.Length != Materials.Count || s.Stockpile.Any(n => n < 0)) ||
                     s.Owner is not null && s.Stockpile is null || s.Freighters is not { Length: 2 } || s.Freighters.Any(n => n < 0)))) ||
