@@ -44,6 +44,8 @@ public class Star
     public int Mines { get; set; }
     public int SettlementSize { get; set; }
     public int[]? Stockpile { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ColonyEnvironment? Environment { get; set; }
     public bool Gate { get; set; }
     public int[] Freighters { get; set; } = [0, 0];
 }
@@ -82,7 +84,7 @@ public static class Rules
     {
         if(economyVersion is not (0 or 1)) throw new RuleException("Unknown economy version.");
         if(combatVersion is not (0 or 1)) throw new RuleException("Unknown combat version.");
-        var g = new Game { Seed = seed, EconomyVersion = economyVersion, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
+        var g = new Game { Seed = seed, EconomyVersion = economyVersion, ReconRates = ReconRates.NewCampaign, Deadline = now.AddDays(1), Clans = [new() { Name = "Aurora Federation" }, new() { Name = "Ember Empire", Ai = ai }] };
         g.ReconEntropy = reconEntropy ?? Recon.NewEntropy();
         Recon.ValidateEntropy(g.ReconEntropy);
         // Legacy topology: retain saved identities and rule-compatible IDs. Fresh Development games use RealStarMap.
@@ -94,7 +96,7 @@ public static class Rules
         return g;
     }
     public static Game CreateFromMap(GeneratedStarMap map, DateTimeOffset now, bool ai = true, int economyVersion = 0, int combatVersion = 0,
-        int logisticsVersion = 0, int[]? industrialFocus = null)
+        int logisticsVersion = 0, int[]? industrialFocus = null, string? reconEntropy = null)
     {
         if (logisticsVersion is not (0 or 1) || (logisticsVersion == 1 && map.RealCatalogVersion is null))
             throw new RuleException("Local logistics requires a real-system campaign.");
@@ -108,14 +110,19 @@ public static class Rules
         if (!System.Text.Json.JsonSerializer.Serialize(expected).Equals(System.Text.Json.JsonSerializer.Serialize(map), StringComparison.Ordinal))
             throw new RuleException("Star map snapshot does not match its generator settings.");
         // Initialize typed fleets only after replacing the legacy layout with this map.
-        var game = Create(map.Seed, now, ai, economyVersion, combatVersion: 0);
+        var game = Create(map.Seed, now, ai, economyVersion, combatVersion: 0, reconEntropy: reconEntropy);
         game.GeneratedMap = map;
         game.LogisticsVersion = logisticsVersion;
         game.MaterialsVersion = map.RealCatalogVersion is null ? 0 : 1;
         for (var team = 0; team < 2; team++) game.Clans[team].IndustrialFocus = industrialFocus[team];
         if (map.RealCatalogVersion is not null && logisticsVersion == 0)
             foreach (var clan in game.Clans) clan.Materials = Materials.StartingStock();
-        game.Stars = map.Systems.Select(s => new Star { Id = s.Id, Name = s.Name, X = s.X, Y = s.Y }).ToList();
+        var homeworlds = map.Homeworlds.Select(home => home.SystemId).ToHashSet();
+        game.Stars = map.Systems.Select(s => new Star
+        {
+            Id = s.Id, Name = s.Name, X = s.X, Y = s.Y,
+            Environment = map.RealCatalogVersion is not null ? Habitability.Generate(game.ReconEntropy!, s.Id, homeworlds.Contains(s.Id)) : null
+        }).ToList();
         foreach (var clan in game.Clans) clan.Known.Clear();
         foreach (var home in map.Homeworlds)
         {

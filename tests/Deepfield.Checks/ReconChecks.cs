@@ -17,38 +17,123 @@ public static class ReconChecks
         var intel=g.Clans[0].Intelligence.Single();
         Check(intel.EnemyShips==7&&intel.EnemyScouts==2&&intel.Collectors==3&&intel.Owner==1&&intel.Returned,"Returning deep scout reports encountered exact composition");
         var realMap=RealStarMap.Generate();
-        var real=Rules.CreateFromMap(realMap,now,false);
+        var real=Rules.CreateFromMap(realMap,now,false,combatVersion:1,logisticsVersion:1);
         real.ReconRates=new(100,100,100);
         var source=realMap.Homeworlds[0].SystemId;
-        real.Stars[source].Scouts[0]=2;
-        real.Stars[3].Ships[1]=7; // Ross 128 in pinned catalog v1.
-        real.Clans[0].Orders=[new("recon",source,3,1,"deep"),new("recon",source,6,1,"deep")]; // eps Ind A is ID 6.
-        Recon.Resolve(real,now);
+        var ross=real.Stars.Single(star=>star.Name=="Ross 128").Id;
+        var indi=real.Stars.Single(star=>star.Name=="eps Ind A").Id;
+        int AdjacentSource(int target)=>realMap.Links.Select(link=>link.From==target?link.To:link.To==target?link.From:-1)
+            .First(id=>id>=0&&id!=ross&&id!=indi&&real.Stars[id].Owner!=1);
+        var rossSource=AdjacentSource(ross);var indiSource=AdjacentSource(indi);
+        foreach(var id in new[]{rossSource,indiSource}){var star=real.Stars[id];star.Owner=0;star.Scouts[0]=2;star.Stockpile??=new int[Materials.Count];}
+        real.Clans[0].Known.AddRange(new[]{ross,indi}.Where(id=>!real.Clans[0].Known.Contains(id)));
+        real.Stars[ross].Fleets![1][1]=7;
+        real.Stars[ross].Scouts[1]=2;
+        Check(real.Stars.All(star=>star.Environment is not null)&&
+              real.Stars.Select(star=>star.Environment).Distinct().Count()>1&&
+              Habitability.Score(new(0,0,0))==100&&Habitability.Score(new(100,100,100))==0&&
+              Habitability.Score(new(100,0,0))==33,
+            "New real campaigns generate varied profiles and the advisory scale handles ideal and extreme sites");
+        var reloadedReal=GameCodec.Read(JsonSerializer.Serialize(real));
+        Check(real.Stars.Select(star=>star.Environment).SequenceEqual(reloadedReal.Stars.Select(star=>star.Environment))&&
+              Fixture().Stars.All(star=>star.Environment is null)&&
+              Rules.CreateFromMap(StarMapGenerator.Generate(123),now,false).Stars.All(star=>star.Environment is null),
+            "Generated environments persist and non-real campaign modes stay unmodeled");
+        var unobserved=Rules.Observe(real,0);
+        var concealedView=JsonSerializer.Serialize(unobserved);
+        real.Stars[ross].Environment=new(0,0,0);
+        Check(concealedView==JsonSerializer.Serialize(Rules.Observe(real,0)),
+            "Changing a hidden environment does not change either the charted-system view or catalog");
+        Check(unobserved.Stars[ross].Statistics?.Fleets.Count==0&&unobserved.Stars[indi].Statistics?.MaterialSurvey is null,
+            "Charting real systems is not a completed fleet or material survey");
+        Rules.Submit(real,0,new(1,0,"real-deep-scouts",[new("recon",rossSource,ross,1,"deep"),new("recon",indiSource,indi,1,"deep")]),now);
+        var reportAt=real.Deadline;
+        Check(Rules.Resolve(real,reportAt),"Submitted real-star recon missions resolve through the normal turn pipeline");
         var observed=Rules.Observe(real,0);
-        Check(observed.Stars[3].Statistics?.Fleets.Single().CombatShips==7&&observed.Stars[3].Statistics?.Knowledge=="historical",
-            "Returning deep scout projects dated Ross 128 enemy ship count");
-        Check(observed.Stars[6].Statistics?.MaterialSurvey?.Sum()==realMap.RealSystems![6].Planets.Count&&
-              observed.Intelligence!.Single(report=>report.Star==6).MaterialSurvey?.SequenceEqual(Materials.Survey(real,6))==true,
-            "Returning deep scout records eps Ind A material sites without claiming production");
-        Check(Rules.Observe(real,1).Intelligence!.Count==0&&GameCodec.Read(JsonSerializer.Serialize(real)).Clans[0].Intelligence.Single(report=>report.Star==6).MaterialSurvey is not null,
+        var rossStats=observed.Stars[ross].Statistics;var indiStats=observed.Stars[indi].Statistics;
+        Check(rossStats?.Fleets.Single() is { CombatShips:7, Scouts:2, TotalShips:9 }&&
+              rossStats.Knowledge=="historical"&&rossStats.Turn==1&&rossStats.At==reportAt,
+            "Returning deep scout projects dated Ross 128 enemy ship count including typed hulls");
+        Check(indiStats?.Fleets.Single() is { CombatShips:0, Scouts:0, TotalShips:0 }&&indiStats.EnemyPresent==false,
+            "A returned deep scout confirms zero ships instead of leaving an unknown count");
+        Check(indiStats?.MaterialSurvey?.Sum()==realMap.RealSystems![indi].Planets.Count&&
+              observed.Intelligence!.Single(report=>report.Star==indi).MaterialSurvey?.SequenceEqual(Materials.Survey(real,indi))==true&&
+              observed.Stars[indi].MaterialYield is null,
+            "Returning deep scout records Epsilon Indi A material sites without claiming production");
+        var environmentReport=observed.Intelligence!.Single(report=>report.Star==ross);
+        Check(environmentReport is {Mission:"deep",Returned:true,Turn:1,HabitabilityScore:100,HabitabilityFactors:{ThermalStress:0,GravityStress:0,RadiationStress:0}}&&
+              Rules.Observe(real,1).Intelligence!.All(i=>i is {HabitabilityScore:null,HabitabilityFactors:null})&&
+              GameCodec.Read(JsonSerializer.Serialize(real)).Clans[0].Intelligence.Single(i=>i.Star==ross).HabitabilityScore==100,
+            "Returning deep survey is dated, clan-private, and survives save reload");
+        real.Stars[ross].Environment=new(100,100,100);
+        Check(GameCodec.Read(JsonSerializer.Serialize(real)).Clans[0].Intelligence.Single(i=>i.Star==ross)
+                .HabitabilityFactors is {ThermalStress:0,GravityStress:0,RadiationStress:0}&&
+              Rules.Observe(real,0).Intelligence!.Single(i=>i.Star==ross).HabitabilityFactors is {ThermalStress:0,GravityStress:0,RadiationStress:0},
+            "Factor breakdown is a private saved observation, not a fresh read of the planet");
+        Check(Rules.Observe(real,0).Intelligence!.Single(i=>i.Star==ross).HabitabilityScore==100,
+            "A past habitability survey stays fixed even when the target profile changes");
+        real.Stars[ross].Fleets![1][1]=99;
+        Rules.Resolve(real,real.Deadline);
+        Check(Rules.Observe(real,0).Stars[ross].Statistics?.Fleets.Single().CombatShips==7&&
+              Rules.Observe(real,0).Stars[ross].Statistics?.Turn==1,
+            "Later hidden fleet changes do not update the dated Ross 128 report");
+        Check(Rules.Observe(real,1).Intelligence!.Count==0&&GameCodec.Read(JsonSerializer.Serialize(real)).Clans[0].Intelligence.Single(report=>report.Star==indi).MaterialSurvey is not null,
             "Survey stays clan-private and persists through save reload");
         var lostReal=Rules.CreateFromMap(realMap,now,false);
         lostReal.ReconRates=new(0,0,0);
         lostReal.Stars[source].Scouts[0]=1;
         lostReal.Clans[0].Orders=[new("recon",source,6,1,"deep")];
         Recon.Resolve(lostReal,now);
-        Check(lostReal.Clans[0].Intelligence.Single().MaterialSurvey is null,"Lost deep scout reveals no material sites");
+        Check(lostReal.Clans[0].Intelligence.Single() is {MaterialSurvey:null,HabitabilityScore:null,HabitabilityFactors:null},
+            "Lost deep scout reveals neither mineral sites nor habitability");
+        var legacyReal=Rules.CreateFromMap(realMap,now,false);
+        foreach(var star in legacyReal.Stars) star.Environment=null;
+        legacyReal=GameCodec.Read(JsonSerializer.Serialize(legacyReal));
+        legacyReal.ReconRates=new(100,100,100);
+        legacyReal.Stars[source].Scouts[0]=1;
+        legacyReal.Clans[0].Orders=[new("recon",source,6,1,"deep")];
+        Recon.Resolve(legacyReal,now);
+        Check(legacyReal.Clans[0].Intelligence.Single() is {Returned:true,HabitabilityScore:null,HabitabilityFactors:null},
+            "A successful mission cannot invent a profile for an older save");
+        var shallowReal=Rules.CreateFromMap(realMap,now,false);
+        shallowReal.ReconRates=new(100,100,100);
+        shallowReal.Stars[source].Scouts[0]=2;
+        shallowReal.Clans[0].Orders=[new("recon",source,6,1,"close"),new("recon",source,6,1,"distant")];
+        Recon.Resolve(shallowReal,now);
+        Check(shallowReal.Clans[0].Intelligence.Count==2&&
+              shallowReal.Clans[0].Intelligence.All(i=>i is {Returned:true,HabitabilityScore:null,HabitabilityFactors:null}),
+            "Close and Distant reports cannot provide a habitability survey");
         Check(g.Stars[0].Scouts[0]==4&&!Rules.Resolve(g,due)&&g.Clans[0].Intelligence.Count==1,"Scout return/repeated resolution preserves fleet and one report");
         Check(Rules.Observe(g,1).Intelligence!.Count==0&&Rules.Observe(g,0).Stars[1].Ships==null,"ISR is clan-private and does not grant live target vision");
         g.Stars[1].Ships[1]=99;Rules.Resolve(g,g.Deadline);
         Check(g.Clans[0].Intelligence.Single().EnemyShips==7&&g.Clans[0].Intelligence.Single().Turn==1,"Old intelligence retains timestamp and never silently updates");
-        foreach(var mission in new[]{"distant","close","deep"})
+        foreach(var mission in new[]{"close","deep"})
         {
             g=Mission(mission,false);Rules.Resolve(g,g.Deadline);intel=g.Clans[0].Intelligence.Single();
             Check(g.Stars[0].Scouts[0]==3&&!intel.Returned&&intel.EnemyPresent==true&&intel.EnemyShips==null&&intel.EnemyScouts==null&&intel.Collectors==null&&!intel.OwnerObserved&&intel.FleetBand==null,"Destroyed "+mission+" scout sends only limited contact");
         }
-        g=Mission("distant",false);g.Stars[1].Owner=null;g.Stars[1].Ships[1]=0;g.Stars[1].Scouts[1]=0;Rules.Resolve(g,g.Deadline);
+        g=Mission("close",false);g.Stars[1].Owner=null;g.Stars[1].Ships[1]=0;g.Stars[1].Scouts[1]=0;Rules.Resolve(g,g.Deadline);
         Check(g.Clans[0].Intelligence.Single().EnemyPresent==null,"Lost scout does not confirm a system is empty");
+        var savedDistant=Mission("distant",false);
+        savedDistant.ReconRates=new(90,65,35);
+        savedDistant=GameCodec.Read(JsonSerializer.Serialize(savedDistant));
+        Check(savedDistant.ReconRates==new ReconRates(90,65,35)&&Rules.Observe(savedDistant,0).ReconRates is {Distant:90,Close:65,Deep:35},
+              "An existing save keeps its stored 90% distant odds and shows players that same rate");
+        g=Mission("distant",false);Rules.Resolve(g,g.Deadline);
+        Check(g.Stars[0].Scouts[0]==3&&!g.Clans[0].Intelligence.Single().Returned,
+              "Stored distant odds still decide the outcome in an existing campaign");
+        var hostileDistant=Fixture();
+        Rules.Submit(hostileDistant,0,new(1,0,"mission",[new("recon",0,1,1,"distant")]),now);
+        hostileDistant.Stars[1].Defense=6;
+        hostileDistant=GameCodec.Read(JsonSerializer.Serialize(hostileDistant));
+        Check(Rules.Observe(hostileDistant,0).ReconRates is {Distant:100,Close:65,Deep:35},
+              "A new campaign shows players the guaranteed distant rate");
+        Rules.Resolve(hostileDistant,hostileDistant.Deadline);
+        var distantReport=hostileDistant.Clans[0].Intelligence.Single();
+        Check(hostileDistant.Stars[0].Scouts[0]==4&&distantReport.Returned&&
+              distantReport is {Turn:1,EnemyPresent:true,OwnerObserved:true,Owner:1,
+                  EnemyShips:null,EnemyScouts:null,FleetBand:null,Defense:null,MaterialSurvey:null},
+              "In a new campaign a distant scout always returns from a defended enemy colony without gaining deeper intelligence");
         g=Mission("distant",true);Rules.Resolve(g,g.Deadline);intel=g.Clans[0].Intelligence.Single();
         Check(intel.OwnerObserved&&intel.EnemyPresent==true&&intel.FleetBand==null&&intel.EnemyShips==null,"Distant return reports contact and ownership without fleet counts");
         g=Mission("close",true);Rules.Resolve(g,g.Deadline);intel=g.Clans[0].Intelligence.Single();
@@ -104,7 +189,8 @@ public static class ReconChecks
         Rules.Submit(typedTransit,0,new(1,0,"typed-scouts",[new("move",0,1,2,Hull:"interceptor",Scouts:1)]),now);
         Rules.Resolve(typedTransit,typedTransit.Deadline);
         Check(typedTransit.Stars[1].Owner==0&&typedTransit.Stars[1].Scouts[0]==1,"Typed interceptor expedition can found a colony with its scout passenger");
-        Check(new ReconRates()==new ReconRates(90,65,35),"Initial distant/close/deep return targets are 90/65/35");
+        Check(Rules.Create(7,now,false).ReconRates==new ReconRates(100,65,35)&&Rules.CreateFromMap(RealStarMap.Generate(),now,false).ReconRates==new ReconRates(100,65,35),"New campaigns guarantee distant recon; close and deep defaults stay at 65/35");
+        Check(new ReconRates()==new ReconRates(90,65,35),"Rates missing from an older save fall back to the original 90/65/35");
         var unpredictableA=Rules.Create(42017,now,false);var unpredictableB=Rules.Create(42017,now,false);
         Check(unpredictableA.ReconEntropy!=unpredictableB.ReconEntropy,"Identical public map seeds receive independent private game entropy");
         Check(JsonSerializer.Serialize(Rules.Observe(unpredictableA,0))==JsonSerializer.Serialize(Rules.Observe(unpredictableB,0))&&!JsonSerializer.Serialize(Rules.Observe(unpredictableA,0)).Contains(unpredictableA.ReconEntropy!),"Private entropy never enters clan views or reports");
@@ -128,6 +214,7 @@ public static class ReconChecks
         foreach(var clan in legacy["Clans"]!.AsArray())clan!.AsObject().Remove("Intelligence");
         var migrated=GameCodec.Read(legacy.ToJsonString());
         Check(migrated.Schema==4&&migrated.Stars[0].Ships[0]==8&&migrated.Deadline==g.Deadline&&migrated.Clans[0].Intelligence.Count==0,"Schema 1 migration preserves campaign without fabricating intelligence");
+        Check(migrated.ReconRates==new ReconRates(90,65,35),"Schema 1 migration keeps the original distant odds instead of adopting the new-campaign rate");
         Check(Rules.Submit(migrated,0,request,now)==1&&migrated.Clans[0].Orders.Count==1,"Legacy receipt bytes still match retried old orders");
         var directory=Path.Combine(Path.GetTempPath(),"deepfield-recon-"+Guid.NewGuid());Directory.CreateDirectory(directory);var path=Path.Combine(directory,"legacy.json");await File.WriteAllTextAsync(path,legacy.ToJsonString());
         var store=new FileGameStore(path,()=>throw new Exception("Expected existing save"));await store.Execute(x=>Rules.Submit(x,0,request,now));

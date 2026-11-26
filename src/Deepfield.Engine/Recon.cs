@@ -3,17 +3,23 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Deepfield.Engine;
 
 public record ReconRates(int Distant = 90, int Close = 65, int Deep = 35)
 {
+    // The constructor defaults are the original 90/65/35 odds, so a save that predates stored rates keeps them.
+    // Campaigns created from now on start with a guaranteed distant return; existing saves keep their stored rates.
+    public static ReconRates NewCampaign => new(Distant: 100);
     public int Chance(string mission) => mission switch { "distant" => Distant, "close" => Close, "deep" => Deep, _ => 0 };
 }
 public record Intelligence(string Id, int Star, int Turn, DateTimeOffset At, string Phase, string Mission,
     bool Returned, bool? EnemyPresent, bool OwnerObserved, int? Owner, string? FleetBand, int? EnemyShips,
     int? EnemyScouts, int? Collectors, int? Defense = null, int[]? EnemyComposition = null,
-    int[]? MaterialSurvey = null);
+    int[]? MaterialSurvey = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? HabitabilityScore = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] HabitabilityFactors? HabitabilityFactors = null);
 
 public static class GameCodec
 {
@@ -86,6 +92,7 @@ public static class Recon
                 if (!returned) g.Stars[order.Source].Scouts[team]--;
                 var target = snapshot[order.Target]; var enemy = 1 - team;
                 var present = target.Ships[enemy] > 0 || target.Scouts[enemy] > 0 || target.Owner == enemy;
+                var environment = returned && mission == "deep" ? g.Stars[order.Target].Environment : null;
                 var intel = new Intelligence($"{g.Turn}:{team}:{order.Source}:{order.Target}:{mission}:{ordinal}",order.Target,g.Turn,at,
                     "arrival / before combat",mission,returned,returned ? present : present ? true : null,
                     returned,returned ? target.Owner : null,
@@ -96,7 +103,10 @@ public static class Recon
                     returned && mission == "deep" ? target.Defense : null,
                     returned && mission == "deep" ? target.Fleets?[enemy].ToArray() : null,
                     returned && mission == "deep" && g.GeneratedMap?.RealCatalogVersion is not null
-                        ? Materials.Survey(g, order.Target) : null);
+                        ? Materials.Survey(g, order.Target) : null,
+                    environment is not null
+                        ? Habitability.Score(environment) : null,
+                    environment is null ? null : new(environment.ThermalStress, environment.GravityStress, environment.RadiationStress));
                 g.Clans[team].Intelligence.Insert(0,intel);
                 g.Clans[team].Reports.Insert(0,$"Turn {g.Turn}: {mission} scout at {g.Stars[order.Target].Name}: " +
                     (returned ? "returned with a dated intelligence report." : "lost; only limited contact information received."));
