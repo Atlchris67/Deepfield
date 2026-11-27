@@ -33,3 +33,9 @@
 @media(max-width:520px){.ruleFields{grid-template-columns:1fr}}
 .modeChoice{display:grid;gap:4px;font-size:12px;color:#a8bdbf;margin-bottom:14px}
 .modeChoice select{width:100%}
+.seats{margin:0 0 14px}
+.seats small{display:block;font-size:12px;color:#a8bdbf;margin-top:6px}
+.seatFields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.seatFields label{display:grid;gap:4px;font-size:12px;color:#a8bdbf}
+.seatFields select{width:100%}
+.seatList{margin:0;padding-left:18px;font-size:13px}

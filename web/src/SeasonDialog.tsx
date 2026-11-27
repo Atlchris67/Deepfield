@@ -4,6 +4,7 @@ import './seasons.css';
 export type Standing={name:string;colonies:number;collectors:number;ships:number};
 // winner: a clan index, 2 for a shared victory, null when a season was ended early.
 export type Outcome={winner:number|null;turns:number;ended:string|null;standings:Standing[]};
+export type Seat={name:string;computer:boolean};
 export type VictoryRule={colonies:number;collectors:number;turnLimit:number};
 export const standardVictory:VictoryRule={colonies:4,collectors:8,turnLimit:0};
 export type SeasonRecord={season:number;winner:number|null;turns:number;started:string|null;ended:string;standings:Standing[];mapSeed:number};
@@ -31,7 +32,7 @@ function RuleFields({rule,disabled,onChange}:{rule:VictoryRule;disabled:boolean;
 }
 
 // The victory screen, the season record, and the control that starts the next season.
-export function SeasonDialog({season,turn,victory,mode,onSaveSetup,team,outcome,history,canStart,busy,error,onStart,onClose}:{season:number;turn:number;victory:VictoryRule;mode:string|null;onSaveSetup:(rule:VictoryRule,mode:string)=>void;team:number;outcome:Outcome|null;history:SeasonRecord[];canStart:boolean;busy:boolean;error:string;onStart:(endEarly:boolean,rule:VictoryRule,mode:string)=>void;onClose:()=>void}){
+export function SeasonDialog({season,turn,victory,mode,seats,onSetComputer,onSaveSetup,team,outcome,history,canStart,busy,error,onStart,onClose}:{season:number;turn:number;victory:VictoryRule;mode:string|null;seats:Seat[];onSetComputer:(team:number,computer:boolean)=>void;onSaveSetup:(rule:VictoryRule,mode:string)=>void;team:number;outcome:Outcome|null;history:SeasonRecord[];canStart:boolean;busy:boolean;error:string;onStart:(endEarly:boolean,rule:VictoryRule,mode:string)=>void;onClose:()=>void}){
  const dialog=useRef<HTMLDialogElement>(null),[endEarly,setEndEarly]=useState(false),[rule,setRule]=useState(victory),[nextMode,setNextMode]=useState(mode??'');
  useEffect(()=>{dialog.current?.showModal();},[]);
  const shared=outcome?.winner===2,won=outcome?.winner===team;
@@ -45,6 +46,11 @@ export function SeasonDialog({season,turn,victory,mode,onSaveSetup,team,outcome,
    </>:<><h2 id="season-title">Season {season}</h2><p className="seasonLead">This season is still being played. To win: {describe(victory)}.</p></>}
    <p className="seasonMeta">Rules: {modeNames[mode??'']}</p>
    {error&&<p role="alert" className="error">{error}</p>}
+   {seats.length>0&&<section className="seats" aria-label="Who plays each clan"><h3 className="ruleTitle">Who plays each clan</h3>
+    {canStart?<><div className="seatFields">{seats.map((seat,i)=><label key={i}>{seat.name}{i===team?' (you)':''}<select value={seat.computer?'computer':'players'} disabled={busy} onChange={e=>onSetComputer(i,e.target.value==='computer')}><option value="players">Its players</option><option value="computer">The computer</option></select></label>)}</div>
+     <small>The computer plays a clan only while it is set here, from the next turn resolution. It never steps in by itself: players who miss a turn give no orders that turn.</small></>
+    :<ul className="seatList">{seats.map((seat,i)=><li key={i}>{seat.name}{i===team?' (you)':''}: played by {seat.computer?'the computer':'its players'}</li>)}</ul>}
+   </section>}
    <section className="nextSeason" aria-label="Next season">
     {canStart?<>
      <p>Season {season+1} starts everyone again from one homeworld, on a new map with different links and homeworlds. Clan channels and this record are kept. This cannot be undone.</p>

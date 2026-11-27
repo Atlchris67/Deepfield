@@ -60,6 +60,12 @@ try{
  check(toAdvanced.status===200&&asAdvanced.mode==='advanced'&&asAdvanced.combatVersion===1&&asAdvanced.logisticsVersion===1&&asAdvanced.economyVersion===1&&linkText(asAdvanced)===linksBeforeMode&&asAdvanced.victory.colonies===3&&asAdvanced.reports[0].includes('advanced mode'),
   'Before the first turn the owner can switch the season to advanced mode on the same map, keeping the winning condition');
  check((await owner.call('admin/mode',{season:1,mode:'simple'})).status===200&&(await sam.call('campaign')).json.campaign.mode==='simple','The owner can switch back to simple mode before the first turn');
+ const seatsNow=async who=>(await who.call('campaign')).json.campaign.seats,pass=turn=>({turn,revision:0,requestId:'seat-'+Math.random(),orders:[]});
+ check(JSON.stringify(await seatsNow(sam))===JSON.stringify([{name:'Aurora Federation',computer:false},{name:'Ember Empire',computer:false}]),'Both clans of a campaign of people are shown as played by their players');
+ check((await sam.call('admin/clan',{team:0,computer:true})).status===403&&(await owner.call('admin/clan',{team:5,computer:true})).status===409&&(await seatsNow(owner)).every(seat=>!seat.computer),'Only the owner can hand a clan to the computer, and only an existing clan');
+ const handed=await owner.call('admin/clan',{team:1,computer:true}),refusedOrders=await sam.call('orders',pass(1),'PUT');
+ check(handed.status===200&&handed.json.seats[1].computer&&(await seatsNow(sam))[1].computer&&refusedOrders.status===409&&refusedOrders.json.error.includes('played by the computer'),'While the owner has set a clan to the computer, its players are told and their orders are refused');
+ check((await owner.call('admin/clan',{team:1,computer:false})).status===200&&!(await seatsNow(sam))[1].computer&&(await sam.call('orders',pass(1),'PUT')).status===200,'Handed back, the clan takes orders from its players again');
  assert.equal((await sam.call('messages',{id:'before-the-end',text:'Good game, see you next season.'})).status,200);
 
  // Decide the season by editing the throwaway save while the server is stopped: clan 0 holds 4 colonies and 10 collectors.
@@ -106,9 +112,19 @@ try{
  const past=samDialog.locator('.seasonHistory li');
  check(await past.count()===1&&(await past.innerText()).includes('Season 1')&&(await past.innerText()).includes('Aurora Federation won')&&(await past.innerText()).includes('7 turns')&&await samDialog.getByRole('button',{name:/Start season/}).count()===0,'Any player can open the season record and see past results');
  check((await samDialog.getByText(/To win: 3 colonies and 6 collectors/).innerText()).includes('turn 30')&&await samDialog.getByLabel('Colonies to win').count()===0&&await samDialog.getByText('Rules: Simple mode').count()===1&&await samDialog.locator('.modeChoice').count()===0,'A player sees the mode and winning condition but cannot edit them');
+ check((await samDialog.locator('.seatList').innerText()).includes('Ember Empire (you): played by its players')&&await samDialog.locator('.seats select').count()===0,'A player sees who plays each clan but cannot change it');
  await samDialog.getByRole('button',{name:'Close'}).click();
 
  await ownerPage.getByRole('button',{name:'Season 2',exact:true}).click();
+ const seatPickers=ownerDialog.locator('.seatFields select');
+ check(await seatPickers.count()===2&&await ownerDialog.getByLabel('Ember Empire').inputValue()==='players'&&await ownerDialog.getByLabel('Aurora Federation (you)').inputValue()==='players','The owner sees one control for each clan');
+ await ownerDialog.getByLabel('Ember Empire').selectOption('computer');await ownerPage.getByText('Ember Empire is now played by the computer.').waitFor();
+ await ownerPage.screenshot({path:resolve(folder,'who-plays.png')});
+ await samPage.reload();await samPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ check(await ownerDialog.getByLabel('Ember Empire').inputValue()==='computer'&&(await samPage.locator('.banner').innerText()).includes('Your clan is played by the computer'),'The owner hands a clan to the computer in the season dialog, and its players see a notice on their command deck');
+ await ownerDialog.getByLabel('Ember Empire').selectOption('players');await ownerPage.getByText('Ember Empire is played by its players again.').waitFor();
+ await samPage.reload();await samPage.getByRole('heading',{name:'The stars are within reach.'}).waitFor();
+ check(await samPage.locator('.banner').count()===0&&(await seatsNow(sam)).every(seat=>!seat.computer),'Handing the clan back removes the notice');
  const startThird=ownerDialog.getByRole('button',{name:/Start season 3/});
  check(await startThird.isDisabled()&&await ownerDialog.getByText('This season is still being played.',{exact:false}).count()===1,'An undecided season cannot be replaced until ending it early is ticked');
  await ownerDialog.getByLabel('Colonies to win').fill('2');await ownerDialog.getByLabel('Collectors to win').fill('5');await ownerDialog.getByLabel(/Turn limit/).fill('0');
