@@ -19,7 +19,7 @@ Found and fixed:
 New suite `npm run test:desktop` (`web/tests/desktop.mjs`): **56 checks**, 28 in each mode, with a real server and Microsoft Edge:
 
 - the owner setup screen fits, with no text under 11 pixels and every control named;
-- at each of the three sizes: no sideways scrolling and nothing off the edge; no text under 11 pixels and every control named; the sky sits beside the system panel and fills its height; the system tabs and orbit controls fit on one line; no star name covers another; the sky, the system panel and (in advanced mode) the logistics panel start on the same system;
+- at each of the three sizes: no sideways scrolling and nothing off the edge; no text under 11 pixels and every control named; the sky sits beside the system panel and fills its height; the system tabs and orbit controls are fully visible, none cut off or broken inside a button; no star name covers another; the sky, the system panel and (in advanced mode) the logistics panel start on the same system;
 - a star whose name is hidden shows it on keyboard focus, and choosing it with the keyboard selects it;
 - the Players, Season and Colonization planner dialogs open from the keyboard, fit the window, and Escape closes each and returns focus to its button;
 - the browser console shows no errors or warnings, with one exception listed below.

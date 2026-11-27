@@ -31,7 +31,7 @@ const sky=()=>{
  const names=[...document.querySelectorAll('.spacekitGalaxyLabels .realStarName')].map(e=>({name:e.textContent,r:e.getBoundingClientRect()})).filter(n=>n.r.width>0);
  const overlaps=[];for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){const a=names[i].r,b=names[j].r;if(a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top)overlaps.push(names[i].name+' / '+names[j].name);}
  const tabs=document.querySelector('.inlineRealSky .systemTabs'),controls=[...document.querySelectorAll('.inlineRealSky .orbitZoomControls button')];
- return {tabsFit:!!tabs&&tabs.scrollWidth<=tabs.clientWidth+1&&controls.length===3&&controls.every(e=>e.getBoundingClientRect().height<48),beside:!!galaxy&&!!details&&Math.abs(galaxy.top-details.top)<2,gap:galaxy&&details?Math.round(details.bottom-galaxy.bottom):null,height:galaxy?Math.round(galaxy.height):0,shown:names.length,overlaps,
+ return {tabsFit:!!tabs&&tabs.scrollWidth<=tabs.clientWidth+1&&[...tabs.children].every(e=>e.getBoundingClientRect().height<52)&&controls.length===3&&controls.every(e=>e.getBoundingClientRect().height<48),beside:!!galaxy&&!!details&&Math.abs(galaxy.top-details.top)<2,gap:galaxy&&details?Math.round(details.bottom-galaxy.bottom):null,height:galaxy?Math.round(galaxy.height):0,shown:names.length,overlaps,
   heading:document.querySelector('.realSystemDetails h3')?.textContent,chosen:document.querySelector('.realSystemDetails select')?.selectedOptions[0]?.textContent,
   active:document.querySelector('.spacekitGalaxyLabels .realStar.active .realStarName')?.textContent,text:document.querySelector('#campaign-details')?.innerText??''};
 };
@@ -61,7 +61,7 @@ async function run(mode,port){
    check(layout.overflowX<=0&&!layout.offscreen.length,`[${mode}] At ${width}×${height} the command deck has no sideways scrolling and nothing off the edge`,JSON.stringify(layout.offscreen));
    check(!layout.small.length&&!layout.unnamed.length,`[${mode}] At ${width}×${height} no text is under 11px and every control has a name`,JSON.stringify([layout.small,layout.unnamed]));
    check(view.beside&&view.height>=370&&(Math.abs(view.gap)<=2||view.height>=Math.max(650,height-40)-1),`[${mode}] At ${width}×${height} the sky sits beside the system panel and fills its height, up to the height of the window`,JSON.stringify({...view,text:''}));
-   check(view.tabsFit,`[${mode}] At ${width}×${height} the four system tabs and the orbit controls fit their panel on one line`);
+   check(view.tabsFit,`[${mode}] At ${width}×${height} the four system tabs and the orbit controls are fully visible, none cut off or broken inside a button`);
    check(view.shown>=8&&!view.overlaps.length,`[${mode}] At ${width}×${height} no star name covers another (${view.shown} of 24 names shown)`,JSON.stringify(view.overlaps));
    check(!!view.heading&&view.heading===view.chosen&&view.heading===view.active&&(mode==='simple'||view.text.includes('Selected system: '+view.heading+'.')),`[${mode}] At ${width}×${height} the sky, the system panel and (in advanced mode) the logistics panel start on the same system, one of the clan's colonies`,JSON.stringify([view.heading,view.chosen,view.active]));
   }
