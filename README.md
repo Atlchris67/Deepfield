@@ -153,7 +153,7 @@ The browser suite uses installed Edge by default (`BROWSER_CHANNEL=chrome` also 
 
 ## Remaining scope
 
-PostgreSQL storage, personal accounts with invitations, sign-in rate limits and proxy/HTTPS handling are implemented and verified against a disposable PostgreSQL server (see `docs/VERIFICATION.md`); the container image itself is unbuilt and nothing is deployed. Before public hosting: choose the provider, build the image, rehearse backup and restore, and get an independent security review ([docs/HOSTING.md](docs/HOSTING.md)). No DNS, Cloudflare Tunnel, firewall, external accounts, production credentials or persistent services have been configured. Additional campaigns, richer ship designs, diplomacy, balance tuning and accessibility testing are follow-up work. Federation/Empire use original names and styling, with no franchise assets.
+PostgreSQL storage, personal accounts with invitations, sign-in rate limits and proxy/HTTPS handling are implemented and verified against a disposable PostgreSQL server (see `docs/VERIFICATION.md`); the container image is built and started by CI but has never run on a hosting platform, and nothing is deployed. Before public hosting: choose the provider, rehearse backup and restore, and get an independent security review ([docs/HOSTING.md](docs/HOSTING.md)). No DNS, Cloudflare Tunnel, firewall, external accounts, production credentials or persistent services have been configured. Additional campaigns, richer ship designs, diplomacy, balance tuning and accessibility testing are follow-up work. Federation/Empire use original names and styling, with no franchise assets.
 
 The repository now has an agreed documentation baseline on main. Development is published as stacked draft PRs; none is merged automatically.
 

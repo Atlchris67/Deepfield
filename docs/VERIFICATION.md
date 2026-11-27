@@ -1,5 +1,40 @@
 # Verification — 2026-10-14, Piedmont
 
+## Continuous integration and merge to main (milestone 7) - 2026-11-27
+
+Branch `feature/ci`, stacked on `feature/desktop-polish`, with `feature/merge-signing` on top. No deployment. The running playtest, its keys and its save were not touched.
+
+`.github/workflows/ci.yml` runs on every pull request, on every push to `main`, and on request. It never deploys and never publishes anything. On a GitHub Linux runner with .NET 10, Node 22, Microsoft Edge and a throwaway PostgreSQL 16:
+
+- `npm ci`, then the TypeScript check including unused code.
+- `dotnet build Deepfield.sln --warnaserror`: no warnings.
+- `Deepfield.Checks` with PostgreSQL: **346 checks passed**. No retry.
+- The real-campaign checks 40 more times with fresh random deposits: all passed (see the fix below).
+- Every web and browser suite: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, star-map-component 13, real-sky-rotation-component 25, material-reservations 19, real-sky-projection, system-panel-component, planet-scale, real-campaign-api 14, generated-campaign-api 22, smoke 73, **accounts 37** (including the hosted configuration against PostgreSQL), seasons 45, desktop 56, planet-api 14.
+- A second job builds the container image from the `Dockerfile`, starts it in Production mode against a throwaway PostgreSQL, and requires its health check to answer and the web app to be served. This is the first time the image has been built.
+
+What the first runs on Linux found, all fixed:
+
+- The planet component suite read a fixtures file that existed only on the development machine. CI now has the planet checks write it during the run (`DEEPFIELD_PLANET_FIXTURES`).
+- The smoke suite waited forever after a server that ended by a signal instead of an exit code, which is how a crash ends on Linux. Five suites now treat both as stopped.
+- The hosted account checks expect a campaign with no owner and were sharing a database the rules checks had already used. They get their own empty database.
+- With Linux fonts the system-panel tabs did not fit a 1280-pixel window. They now move to a second line instead of being cut off, with any font.
+- A machine with no graphics card logs a notice that a screenshot of the 3D sky was slow. The desktop suite ignores that one notice.
+- **The older check that failed by chance is fixed.** `RealCampaignChecks` compared a campaign with the new material balance against one with the original balance, each with different random deposits, and required more Ferrite and more Neralite. Giving both the same deposits did not make it reliable (4 failures in 60 runs): with the original balance a home planet can by luck be all Neralite, which gives more Neralite than the new balance and no Ferrite at all. The check now gives both campaigns the same deposits and requires the scarcer of the two supplies to be better, which is what the new balance guarantees. A `--real-campaign` flag runs just these checks.
+
+Merge:
+
+- The owner chose to fast-forward `main` to the tip of the stack and to make `main` the default branch (2026-11-27). `main` had one commit and nothing to conflict, so no history is rewritten and nothing is force-pushed.
+- Pull request #6 (optional signing workflow) is merged into the stack on `feature/merge-signing`. Two conflicts (`.gitignore`, `README.md`) were resolved by keeping both sides. `tests/signing-checks.ps1`: 23 checks pass on Windows. Nothing is signed unless someone runs the script with a certificate.
+- Not included: #12 (rotatable planet previews) and #14 (star-map setup preview), because the stack already contains later versions of both features; and #15 (richer starfield), because it draws behind the flat sector map that the 3D sky replaced. They remain open and untouched.
+
+Not verified:
+
+- The signing checks are not part of CI; they are PowerShell written for Windows and were run by hand.
+- After the last change to the material check, the rules checks were run by CI only. The development machine's Application Control policy blocked the rebuilt checks program, and that policy was left alone.
+- The container image has not been run on any hosting platform, only inside CI.
+- CI uses Microsoft Edge on Linux only. No other browser, and no Windows runner.
+
 ## Desktop polish (milestone 6) - 2026-11-26
 
 Branch `feature/desktop-polish`, stacked on `feature/fill-in-ai`. Browser changes only; no rule, save format or server change. No deployment. The running playtest, its keys and its save were not touched.
@@ -61,7 +96,7 @@ Not verified:
 - Winning conditions other than the standard one. In advanced mode collectors need two materials that mostly exist only at the homeworld, so a high collector target may be out of the computer's reach.
 - The component suites were run before a last change to the planner (movement is now planned before the remaining purchases). That change is in the engine only; the rules checks and all server-backed browser suites were rerun after it, the component suites were not.
 - The accounts suite with the hosted PostgreSQL configuration was not rerun (nothing in accounts changed).
-- The older `RealCampaignChecks` material check that fails by chance (see milestone 4) is unchanged and passed in these runs.
+- The older `RealCampaignChecks` material check that fails by chance (see milestone 4) is unchanged and passed in these runs. (It was fixed in milestone 7.)
 
 ## Simple and advanced modes (milestone 4) - 2026-11-26
 

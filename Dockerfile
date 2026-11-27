@@ -1,7 +1,7 @@
 # Provider-neutral image for hosted Deepfield. Build from the repository root:
 #   docker build -t deepfield .
-# NOTE: this file has not been built on the development machine (no Docker there).
-# The equivalent publish layout was verified without Docker; see docs/VERIFICATION.md.
+# CI builds this image and starts it against a throwaway PostgreSQL on every pull request (.github/workflows/ci.yml).
+# It is not pushed anywhere, and it has not been built on the development machine (no Docker there).
 
 FROM node:22-bookworm-slim AS web
 WORKDIR /src/web

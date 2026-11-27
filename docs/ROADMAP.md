@@ -12,7 +12,7 @@ The goals, owner decisions, Stars! clean-room rule and definition of version 1.0
 | 4 | Simple and advanced modes replacing the overlapping rule versions | In review: draft pull request from `feature/modes`. One mode choice (simple or advanced) made by the game creator for each season; both modes use the real-star map; older campaigns keep their saved rules. See [MODES.md](MODES.md). Open: whether habitability should affect colonies |
 | 5 | Fill-in AI for missing players | In review: draft pull request from `feature/fill-in-ai`. The owner sets each clan to its players or the computer in the season dialog; the computer never steps in by itself (owner decision). A new computer player for simple and advanced mode finishes a season on every test map. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md) |
 | 6 | Desktop polish and recorded verification | In review: draft pull request from `feature/desktop-polish`. The command deck and its dialogs were audited at 1280, 1440 and 1920 pixels wide in both modes; the defects found are fixed and a new suite, `npm run test:desktop`, holds them fixed. Results are in [VERIFICATION.md](VERIFICATION.md) |
-| 7 | Everything merged to `main` with CI | Not started. No CI workflow exists yet |
+| 7 | Everything merged to `main` with CI | CI exists (`.github/workflows/ci.yml`) and passes on the full stack: build, every recorded check, and a build and start of the container image. `main` is fast-forwarded to the stack once CI is green on its tip (owner decision 2026-11-27). Pull requests #12, #14 and #15 are not included: see [VERIFICATION.md](VERIFICATION.md) |
 
 The sections below are the earlier increment notes, kept as history.
 

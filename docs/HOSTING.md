@@ -106,8 +106,9 @@ clan keys and save file, is not moved and is not touched.
 
 ## Known limits
 
-- The `Dockerfile` has not been built on the development machine (Docker is not installed there). The same
-  publish layout was run in Production mode against PostgreSQL without Docker; see [VERIFICATION.md](VERIFICATION.md).
+- The `Dockerfile` is built by CI on every pull request, and the image is started there against a throwaway
+  PostgreSQL and must answer its health check and serve the web app. It is not pushed to any registry and has not
+  been run on a hosting platform. It has not been built on the development machine (Docker is not installed there).
 - One owner. No self-service password reset, no email verification, no two-factor sign-in.
 - Accounts are one JSON document, like the campaign. That suits a family campaign; it must become proper tables
   before commercial scale.
