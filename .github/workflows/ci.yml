@@ -80,8 +80,12 @@ jobs:
         env:
           DEEPFIELD_TEST_API_DLL: ${{ github.workspace }}/src/Deepfield.Api/bin/Debug/net10.0/Deepfield.Api.dll
           DEEPFIELD_TEST_WEBROOT: ${{ github.workspace }}/test-results/planet-web
+          # The hosted-configuration checks expect a campaign with no owner yet, so they get a database the rules checks have not used.
+          DEEPFIELD_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=deepfield;Password=disposable-ci-only;Database=deepfield_web
+          PGPASSWORD: disposable-ci-only
         run: |
           set -e
+          psql -h 127.0.0.1 -U deepfield -d deepfield_test -c 'create database deepfield_web' > /dev/null
           node --experimental-strip-types tests/real-sky-projection.mjs | tail -1
           for suite in fleet-selection fleet-component intel-component draft-session draft-editing draft-edit-ui \
                        planet-component star-map-component real-sky-rotation-component material-reservations \
