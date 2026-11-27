@@ -87,7 +87,7 @@ async function run(mode,port){
   const unexpected=[...new Set(messages)].filter(text=>!knownLibraryMessage.test(text));
   check(unexpected.length===0,`[${mode}] The browser console shows no errors or warnings`,JSON.stringify(unexpected));
   await context.close();
- }finally{if(server.exitCode===null){const done=new Promise(r=>server.once('exit',r));server.kill();await done;}}
+ }finally{if(server.exitCode===null&&server.signalCode===null){const done=new Promise(r=>server.once('exit',r));server.kill();await done;}}
 }
 try{
  browser=await chromium.launch({channel:'msedge'});

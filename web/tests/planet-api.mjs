@@ -54,4 +54,4 @@ try{
  check((await state(0)).turn===1&&(await state(0)).orders.length===0,'Viewing statistics submits no orders and advances no turns');
  check(errors.length===0,'Integrated command deck has no browser errors');
  console.log(`${checks} disposable API/browser planet checks passed.`);
-}finally{if(browser)await browser.close();if(processHandle&&processHandle.exitCode===null){const exited=new Promise(r=>processHandle.once('exit',r));processHandle.kill();await exited;}}
+}finally{if(browser)await browser.close();if(processHandle&&processHandle.exitCode===null&&processHandle.signalCode===null){const exited=new Promise(r=>processHandle.once('exit',r));processHandle.kill();await exited;}}
