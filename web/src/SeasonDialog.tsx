@@ -34,7 +34,8 @@ function RuleFields({rule,disabled,onChange}:{rule:VictoryRule;disabled:boolean;
 // The victory screen, the season record, and the control that starts the next season.
 export function SeasonDialog({season,turn,victory,mode,seats,onSetComputer,onSaveSetup,team,outcome,history,canStart,busy,error,onStart,onClose}:{season:number;turn:number;victory:VictoryRule;mode:string|null;seats:Seat[];onSetComputer:(team:number,computer:boolean)=>void;onSaveSetup:(rule:VictoryRule,mode:string)=>void;team:number;outcome:Outcome|null;history:SeasonRecord[];canStart:boolean;busy:boolean;error:string;onStart:(endEarly:boolean,rule:VictoryRule,mode:string)=>void;onClose:()=>void}){
  const dialog=useRef<HTMLDialogElement>(null),[endEarly,setEndEarly]=useState(false),[rule,setRule]=useState(victory),[nextMode,setNextMode]=useState(mode??'');
- useEffect(()=>{dialog.current?.showModal();},[]);
+  // Closing the dialog puts keyboard focus back on the button that opened it.
+ useEffect(()=>{const node=dialog.current,opener=document.activeElement instanceof HTMLElement?document.activeElement:null;node?.showModal();return()=>{if(opener?.isConnected)opener.focus();};},[]);
  const shared=outcome?.winner===2,won=outcome?.winner===team;
  return <dialog ref={dialog} className={'planetDialog seasonDialog'+(outcome?(shared||won?' victory':' defeat'):'')} aria-labelledby="season-title" onClose={onClose} onCancel={onClose}>
   <div className="seasonBody"><div className="panelTitle"><div className="eyebrow">SEASON {season}{outcome?' COMPLETE':' IN PROGRESS'}</div><button type="button" className="quiet" onClick={onClose}>{outcome?'View final map':'Close'}</button></div>

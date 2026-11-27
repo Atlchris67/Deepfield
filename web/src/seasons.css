@@ -10,7 +10,7 @@
 .seasonLead{font-size:16px;max-width:52ch}
 .seasonMeta{color:#8fa6aa;font-size:13px}
 .standings{width:100%;border-collapse:collapse;margin:18px 0 8px;font-variant-numeric:tabular-nums}
-.standings caption{text-align:left;font-size:10px;letter-spacing:2px;color:#a8d8c6;padding-bottom:8px;text-transform:uppercase}
+.standings caption{text-align:left;font-size:11px;letter-spacing:2px;color:#a8d8c6;padding-bottom:8px;text-transform:uppercase}
 .standings th,.standings td{padding:9px 8px;border-top:1px solid #263941;text-align:right}
 .standings th:first-child{text-align:left}
 .standings thead th{font-size:12px;color:#a8bdbf;font-weight:500;border-top:0}

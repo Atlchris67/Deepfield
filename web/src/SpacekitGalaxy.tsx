@@ -37,10 +37,18 @@ export function SpacekitGalaxy({items,links,selected,onActivate,embedded}:Props)
    textures.current=[starTexture(false),starTexture(true)];
    const resize=()=>{const w=target.clientWidth,h=target.clientHeight;if(!w||!h)return;sim!.getRenderer().setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
    observer=new ResizeObserver(resize);observer.observe(target);resize();
+   const shown:Array<{button:HTMLButtonElement;key:string;x:number;y:number;rank:number}>=[],widths=new Map<string,number>(),rank:Record<string,number>={own:1,enemy:2,'reported-enemy':2,scouted:3,unknown:4,reference:5};
    const placeLabels=()=>{
     camera.updateMatrixWorld();const w=target.clientWidth,h=target.clientHeight;
     for(const item of displayed.current){const button=labels.current.get(item.key);if(!button)continue;const projected=new THREE.Vector3(...item.position).project(camera);const visible=projected.z>-1&&projected.z<1&&Math.abs(projected.x)<1.1&&Math.abs(projected.y)<1.1;
-     button.style.display=visible?'flex':'none';if(visible){button.style.left=`${(projected.x+1)*w/2}px`;button.style.top=`${(1-projected.y)*h/2}px`;button.style.zIndex=String(Math.round(100-projected.z*50));}}
+     button.style.display=visible?'flex':'none';if(visible){const x=(projected.x+1)*w/2,y=(1-projected.y)*h/2;button.style.left=`${x}px`;button.style.top=`${y}px`;button.style.zIndex=String(Math.round(100-projected.z*50));shown.push({button,key:item.key,x,y,rank:(button.classList.contains('active')?0:rank[item.kind]??5)+projected.z});}}
+    // Names are placed in order of importance; a name that would cover one already placed is hidden until its star is pointed at.
+    shown.sort((a,b)=>a.rank-b.rank);const placed:Array<[number,number,number,number]>=[];
+    for(const label of shown){const name=label.button.lastElementChild as HTMLElement|null,measured=name?.offsetWidth??0;if(measured)widths.set(label.key,measured);
+     const width=widths.get(label.key)??80,box:[number,number,number,number]=[label.x-8,label.y-4,label.x-8+width,label.y+18];
+     const crowded=placed.some(other=>box[0]<other[2]+3&&box[2]>other[0]-3&&box[1]<other[3]+2&&box[3]>other[1]-2);
+     if(!crowded)placed.push(box);if(label.button.classList.contains('crowded')!==crowded)label.button.classList.toggle('crowded',crowded);}
+    shown.length=0;
     frame=requestAnimationFrame(placeLabels);
    };frame=requestAnimationFrame(placeLabels);setError('');
   }catch(reason){setError(reason instanceof Error?reason.message:'Galaxy view unavailable.');}

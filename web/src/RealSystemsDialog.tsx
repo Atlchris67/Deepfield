@@ -37,7 +37,7 @@ export function RealSystemsDialog({onClose,catalog,stars,links,team,intelligence
   const reference=(catalog??snapshot.systems).map((item,index)=>({...item,id:index,temperatureK:item.temperatureK??null,starId:!fictional&&catalog&&stars?.some(star=>star.id===index)?index:undefined,reference:fictional||!catalog,astronomical:true}));
   return fictional&&stars?[...reference,...stars.map(star=>({...campaignVector(star,mapWidth,mapHeight),id:star.id,name:star.name,temperatureK:null,planets:[],starId:star.id,reference:false,astronomical:false}))]:reference;
  },[catalog,stars,fictional,mapWidth,mapHeight]);
- const [selected,setSelected]=useState(()=>fictional?0:Math.max(0,hosts.findIndex(host=>host.starId===stars?.find(star=>star.owner===team)?.id))),[renderError,setRenderError]=useState('');
+ const [selected,setSelected]=useState(()=>{const home=stars?.find(star=>star.owner===team)?.id;return home===undefined?0:Math.max(0,hosts.findIndex(host=>!host.reference&&host.starId===home));}),[renderError,setRenderError]=useState('');
  const [orbitZoom,setOrbitZoom]=useState(1),host=hosts[selected]??hosts[0],campaign=fictional||!!catalog;
  const selectedStar=host.starId===undefined?undefined:stars?.find(star=>star.id===host.starId),stats=selectedStar?.statistics;
  const lastMaterialSurvey=host.starId===undefined?undefined:latestMaterialSurvey(intelligence,host.starId);

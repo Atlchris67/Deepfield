@@ -1,5 +1,48 @@
 # Verification — 2026-10-14, Piedmont
 
+## Desktop polish (milestone 6) - 2026-11-26
+
+Branch `feature/desktop-polish`, stacked on `feature/fill-in-ai`. Browser changes only; no rule, save format or server change. No deployment. The running playtest, its keys and its save were not touched.
+
+How it was done: a hosted campaign was started in each mode, the computer played four turns for the owner's clan so the screens had colonies, reports and intelligence on them, and the command deck and its dialogs were measured and screenshotted in Microsoft Edge at 1280×720, 1440×900 and 1920×1080.
+
+Found and fixed:
+
+- The sky started on the clan's own colony while the materials, logistics and order panels started on system 0, so the page described two different systems. Every panel now starts on the clan's first colony, and starts there again in a new season or a new game.
+- Star names overlapped in the middle of the sky. A name that would cover a more important one (selected, then own, enemy, scouted, unknown) is hidden until its star is pointed at or reached with the keyboard.
+- The sky left a blank block beneath it, beside the taller system panel. It now fills that height, up to the height of the window.
+- 19 style rules set text at 9 or 10 pixels. The smallest text is now 11 pixels.
+- Closing the Players or Season dialog left keyboard focus nowhere. It now returns to the button that opened the dialog, as the planner already did.
+- At 1280 pixels wide the "Defenses" tab of the system panel was cut off and "Reset orbit" wrapped onto two lines. Both now fit on one line.
+- The "Colonization planner" and "Season" buttons looked unlike the section links beside them, and the planner heading was indented further than the rest of its dialog. Both are aligned.
+
+New suite `npm run test:desktop` (`web/tests/desktop.mjs`): **56 checks**, 28 in each mode, with a real server and Microsoft Edge:
+
+- the owner setup screen fits, with no text under 11 pixels and every control named;
+- at each of the three sizes: no sideways scrolling and nothing off the edge; no text under 11 pixels and every control named; the sky sits beside the system panel and fills its height; the system tabs and orbit controls fit on one line; no star name covers another; the sky, the system panel and (in advanced mode) the logistics panel start on the same system;
+- a star whose name is hidden shows it on keyboard focus, and choosing it with the keyboard selects it;
+- the Players, Season and Colonization planner dialogs open from the keyboard, fit the window, and Escape closes each and returns focus to its button;
+- the browser console shows no errors or warnings, with one exception listed below.
+
+Everything else, run against the current Debug build with `DEEPFIELD_TEST_API_DLL` and `DEEPFIELD_TEST_WEBROOT` set:
+
+- `dotnet build Deepfield.sln --no-incremental`: 0 warnings, 0 errors.
+- `Deepfield.Checks` with `DEEPFIELD_TEST_POSTGRES` set: every group passed. No check was added or changed, so the total is the 346 of milestone 5.
+- Unchanged and passing: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, star-map-component 13, real-sky-rotation-component 25, material-reservations 19, real-sky-projection, system-panel-component, planet-scale, planet-api 14, real-campaign-api 14, generated-campaign-api 22, smoke 73, accounts 30, seasons 45.
+
+Known and left as it is:
+
+- The orbit view logs `Object id is not unique: "planet-…"` in the console. Spacekit 0.1.1 registers a sphere that has an orbit twice; nothing is wrong on screen. The desktop suite allows exactly this message and fails on any other.
+- The component suites other than system-panel, real-sky-rotation and planet-component were run before the last style-only change (the 1280 tab fix); those three, smoke and the desktop suite were rerun after it.
+
+Not verified:
+
+- Browsers other than Microsoft Edge, and windows narrower than 1280 pixels. Phones and tablets are out of scope for now (owner decision: computer first).
+- Display scaling other than 100%, and a screen reader. Control names and keyboard reach were checked by measurement, not by listening.
+- The dialogs for a single planet, an expedition and editing an order, and the star-map setup dialog, were not part of the desktop measurements; their own suites still pass.
+- A campaign with the older fictional map was not part of the desktop measurements. The starting-system fix applies there too, and the existing suites still pass.
+- The accounts suite with the hosted PostgreSQL configuration was not rerun (nothing in accounts changed besides focus return in the Players dialog).
+
 ## Computer player (milestone 5) - 2026-11-26
 
 Branch `feature/fill-in-ai`, stacked on `feature/modes`. No deployment. The running playtest, its keys and its save were not touched; tests used throwaway saves and the same disposable embedded PostgreSQL as before.

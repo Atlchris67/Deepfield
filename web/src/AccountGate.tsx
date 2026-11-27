@@ -100,7 +100,8 @@ export function PlayersDialog({session,onClose}:{session:AccountSession;onClose:
  const [link,setLink]=useState<{label:string;url:string}|null>(null),[copied,setCopied]=useState(false);
  async function load(){const result=await accountRequest('admin/players');setPlayers(result.players);setInvitations(result.invitations);}
  async function run(action:()=>Promise<void>){if(busy)return;setBusy(true);setError('');try{await action();await load();}catch(e){setError(e instanceof Error?e.message:'Request failed.');}finally{setBusy(false);}}
- useEffect(()=>{dialog.current?.showModal();void run(async()=>{});},[]);
+  // Closing the dialog puts keyboard focus back on the button that opened it.
+ useEffect(()=>{const node=dialog.current,opener=document.activeElement instanceof HTMLElement?document.activeElement:null;node?.showModal();void run(async()=>{});return()=>{if(opener?.isConnected)opener.focus();};},[]);
  const open=invitations.filter(i=>i.status==='open');
  return <dialog ref={dialog} className="planetDialog playersDialog" aria-labelledby="players-title" onClose={onClose} onCancel={onClose}>
   <div className="playersBody"><div className="panelTitle"><h2 id="players-title">Players and invitations</h2><button type="button" className="quiet" onClick={onClose}>Close</button></div>

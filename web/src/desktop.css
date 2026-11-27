@@ -1,0 +1,23 @@
+/* Desktop finish (milestone 6). Loaded last, so these rules settle the details the earlier passes left open. */
+
+/* The sky fills the height of the system panel beside it instead of leaving a blank block underneath. */
+@container sky (min-width:761px){
+ .inlineRealSky .realSystemsGrid{align-items:stretch}
+ .realSkyPanel .spacekitGalaxy:not(.realSkyExpanded){height:auto;min-height:clamp(370px,57dvh,650px);max-height:max(650px,calc(100dvh - 40px))}
+}
+
+/* Star names that would cover a more important name are hidden until the star is pointed at or focused. */
+.spacekitGalaxyLabels .realStar.crowded .realStarName{display:none}
+.spacekitGalaxyLabels .realStar.crowded:hover,.spacekitGalaxyLabels .realStar.crowded:focus-visible{z-index:999!important}
+.spacekitGalaxyLabels .realStar.crowded:hover .realStarName,.spacekitGalaxyLabels .realStar.crowded:focus-visible .realStarName{display:block}
+
+/* The section links and the two dialog buttons beside them are one row of the same kind of control. */
+.commandJump .quiet{border:1px solid #35514d;border-radius:5px;padding:6px 10px;font-size:12px;font-weight:400;color:#bcebd7;margin:0}
+.commandJump .quiet:hover,.commandJump .quiet:focus-visible{background:#193532}
+
+/* The planner heading lines up with the rest of the dialog. */
+.colonizationPlanner header{padding:0 0 14px;border-bottom:1px solid #23343b;margin-bottom:14px}
+
+/* In the narrower system panel of a 1280px window the four tabs and the orbit controls stay on one line, fully visible. */
+.inlineRealSky .systemTabs button{font-size:14px;padding:8px 6px}
+.inlineRealSky .orbitZoomControls button{white-space:nowrap;font-size:14px;padding:8px 12px}
