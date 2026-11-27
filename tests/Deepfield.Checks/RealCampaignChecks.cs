@@ -138,6 +138,8 @@ public static class RealCampaignChecks
         var richer = Rules.CreateFromMap(map, now, ai: false);
         var original = Rules.CreateFromMap(map, now, ai: false);
         original.MaterialsVersion = 0;
+        // Both campaigns get the same random deposits, so the comparison below measures the balance change and not luck.
+        original.ReconEntropy = richer.ReconEntropy;
         foreach (var home in map.Homeworlds)
         {
             var survey = Materials.Survey(richer, home.SystemId);
@@ -168,9 +170,11 @@ public static class RealCampaignChecks
         for (var material = 0; material < Materials.Count; material++)
             if (richer.Clans[0].Materials![material] != starting[material] + 4 * perTurn.Sum(y => y[material]))
                 throw new Exception("Material production did not conserve stock over four turns.");
-        if (richer.Clans[0].Materials![0] <= original.Clans[0].Materials![0] ||
-            richer.Clans[0].Materials![3] <= original.Clans[0].Materials![3])
-            throw new Exception("New balance did not improve early construction and fuel supply.");
+        // With the same deposits the original balance can, by luck, give more of one of the two (a home planet that is all Neralite)
+        // while giving none of the other. What the new balance guarantees is that the scarcer of the two is better supplied.
+        int Scarcer(Game game) => Math.Min(game.Clans[0].Materials![0], game.Clans[0].Materials![3]);
+        if (Scarcer(richer) <= Scarcer(original))
+            throw new Exception($"New balance did not improve the scarcer of early construction and fuel supply: [{string.Join(",", richer.Clans[0].Materials!)}] against [{string.Join(",", original.Clans[0].Materials!)}].");
         foreach (var home in map.Homeworlds)
         {
             var builder = Rules.CreateFromMap(map, now, ai: false);

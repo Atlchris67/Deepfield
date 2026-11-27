@@ -57,20 +57,23 @@ jobs:
       - name: Build the solution
         run: dotnet build Deepfield.sln --warnaserror || dotnet build Deepfield.sln --warnaserror
 
-      # One older material check depends on random deposits and fails about one run in ten (docs/VERIFICATION.md), so a failure is tried once more.
       # The planet checks also write the fixtures that the planet component suite reads.
       - name: Rules, storage and account checks
         env:
           DEEPFIELD_PLANET_FIXTURES: ${{ github.workspace }}/test-results/planet-fixtures.json
         run: |
           mkdir -p test-results
-          dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll > checks.log 2>&1 || {
-            grep -v '^PASS' checks.log | tail -20
-            echo "::warning::The rules checks failed once and were run again."
-            dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll > checks.log 2>&1
-          }
+          dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll > checks.log 2>&1 || { grep -v '^PASS' checks.log | tail -20; exit 1; }
           grep -c '^PASS' checks.log | xargs echo "Checks passed:"
           grep -v '^PASS' checks.log | tail -15
+
+      # These checks draw random deposits each time. One of them used to fail about one run in ten, so they are repeated to show it no longer does.
+      - name: Real-campaign checks, 40 more times with fresh random deposits
+        run: |
+          for i in $(seq 1 40); do
+            dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll --real-campaign > real.log 2>&1 || { echo "Failed on repeat $i"; grep -v '^PASS' real.log | head -5; exit 1; }
+          done
+          echo "40 repeats passed"
 
       - name: Build the web app for the browser suites
         run: npm run build --prefix web -- --outDir ../test-results/planet-web

@@ -1,3 +1,4 @@
+if (args.Contains("--real-campaign")) { await RealCampaignChecks.Run(); return; }
 if (args.Contains("--ai")) { AiChecks.Run(); return; }
 if (args.Contains("--modes")) { ModeChecks.Run(); return; }
 if (args.Contains("--seasons")) { await SeasonChecks.Run(); return; }
