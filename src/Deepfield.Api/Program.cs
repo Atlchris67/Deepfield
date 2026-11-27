@@ -144,6 +144,12 @@ app.MapPost("/api/admin/mode",async(HttpContext c,SetMode body)=>
     if(!CanStartSeason(c)) return Results.NotFound();
     return Results.Ok(new{mode=await CampaignStore(c).Execute(g=>{Seasons.SetMode(g,body.Season,body.Mode??"",DateTimeOffset.UtcNow,body.IndustrialFocus);return g.Mode;})});
 });
+// The computer plays a clan only when the campaign owner says so. It never steps in for players who miss a turn.
+app.MapPost("/api/admin/clan",async(HttpContext c,SetClanControl body)=>
+{
+    if(!CanStartSeason(c)) return Results.NotFound();
+    return Results.Ok(new{seats=await CampaignStore(c).Execute(g=>{Ai.SetControl(g,body.Team,body.Computer);return g.Clans.Select(clan=>new Seat(clan.Name,clan.Ai)).ToArray();})});
+});
 app.MapPost("/api/admin/victory",async(HttpContext c,SetVictory body)=>
 {
     if(!CanStartSeason(c)) return Results.NotFound();
@@ -152,7 +158,7 @@ app.MapPost("/api/admin/victory",async(HttpContext c,SetVictory body)=>
 });
 app.MapPut("/api/orders",async(HttpContext c,Submission body)=>Results.Ok(new{revision=await CampaignStore(c).Execute(g=>
 {
-    if(g.Clans[Team(c)].Ai) throw new RuleException("This clan is AI-controlled.");
+    if(g.Clans[Team(c)].Ai) throw new RuleException("This clan is played by the computer. The campaign owner can hand it back to its players.");
     return Rules.Submit(g,Team(c),body,DateTimeOffset.UtcNow);
 })}));
 app.MapPost("/api/messages",async(HttpContext c,BoardPost body)=>Results.Ok(await CampaignStore(c).Execute(g=>
@@ -188,5 +194,6 @@ public record Advance(int Turn);
 public record NextSeason(int Season,bool EndEarly=false,int? MapSeed=null,VictoryRule? Victory=null,string? Mode=null,int[]? IndustrialFocus=null);
 public record SetMode(int Season,string? Mode,int[]? IndustrialFocus=null);
 public record SetVictory(int Season,VictoryRule? Victory);
+public record SetClanControl(int Team,bool Computer);
 public record StarMapPreviewRequest(int Seed,int SystemCount,int Width,int Height,int MinimumSeparation,int NearestNeighborLinks,int PlayerCount,bool Real=false);
 public record StartGeneratedCampaign(string Id,int GeneratorVersion,StarMapPreviewRequest? Preview,int LogisticsVersion=0,int[]? IndustrialFocus=null,int? CombatVersion=null,string? Mode=null);

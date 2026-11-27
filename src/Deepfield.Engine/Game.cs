@@ -85,7 +85,10 @@ public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, str
     IReadOnlyList<StarMapLink>? Links = null, int? MapWidth = null, int? MapHeight = null,
     int? RealCatalogVersion = null, IReadOnlyList<CatalogSystem>? RealSystems = null, int[]? Materials = null,
     int IndustrialFocus = 0, int LogisticsVersion = 0, string[]? ShipDesigns = null,
-    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null, VictoryRule? Victory = null, string? Mode = null);
+    int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null, VictoryRule? Victory = null, string? Mode = null,
+    IReadOnlyList<Seat>? Seats = null);
+/// <summary>Who plays a clan: its players, or the computer when the campaign owner has set it so.</summary>
+public record Seat(string Name, bool Computer);
 public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
@@ -178,7 +181,7 @@ public static class Rules
             RealSystems: g.GeneratedMap?.RealSystems?.Select(host => host with { Planets = c.Known.Contains(host.Id) ? host.Planets : [] }).ToArray(),
             Materials: c.Materials?.ToArray(), IndustrialFocus: c.IndustrialFocus, LogisticsVersion: g.LogisticsVersion,
             ShipDesigns: [..c.ShipDesigns],
-            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g), Mode: g.Mode) { Goal = Victory(g).Collectors };
+            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g), Mode: g.Mode, Seats: g.Clans.Select(clan => new Seat(clan.Name, clan.Ai)).ToArray()) { Goal = Victory(g).Collectors };
     }
     public static void Validate(View v, List<Order> orders)
     {
@@ -319,6 +322,8 @@ public static class Rules
     }
     public static List<Order> PlanAi(View v)
     {
+        // Campaigns with a mode use the newer computer player; older campaigns keep the planners below unchanged.
+        if(v.Mode is not null)return Ai.Plan(v);
         if(v.CombatVersion==1)return TypedCombat.Plan(v);
         var orders = new List<Order>(); var budget = v.Credits;
         foreach (var s in v.Stars.Where(s => s.Visible && s.Owner == v.Team).OrderBy(s => s.Id))
