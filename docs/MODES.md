@@ -35,6 +35,7 @@ would be a new rule and is not part of this work.
   focus per clan is set there. The season dialog does not have industrial-focus controls: a hosted advanced
   season starts balanced, or keeps the focus of the previous advanced season.
 - Both clans see the mode in the season dialog.
+- The computer can play a clan in either mode when the owner sets it to ([COMPUTER-PLAYER.md](COMPUTER-PLAYER.md)).
 
 ## Existing campaigns
 

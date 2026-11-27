@@ -14,7 +14,7 @@ These were decided by the owner and are not open for reinterpretation by contrib
 | Rules depth | A simple default mode plus an advanced mode. The person who starts a game chooses the mode when setting that game up; it is a per-campaign choice, not a server-wide setting. |
 | Campaign length | A campaign lasts a few weeks. After that, play continues in seasons. |
 | Players | Two clans now, designed so more can be added. |
-| Missing players | AI fills in for players who are absent. |
+| Missing players | The computer plays a clan only when the campaign owner sets that clan to computer play (decided 2026-11-26). It never steps in by itself: when players miss a turn, their clan gives no orders that turn. Computer play is for testing and for a clan nobody is playing. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md). |
 | Hosting | Cloud hosting with HTTPS and PostgreSQL. The move to a cloud provider is **postponed** (owner, 2026-11-26); the provider will be chosen when hosting resumes, so the build stays provider-neutral: one container image and a PostgreSQL connection string. Nothing is deployed without the owner's go-ahead. When hosting does go live it starts a fresh campaign; the family playtest is not moved onto it. See [HOSTING.md](HOSTING.md). |
 | Identity | Personal accounts, replacing shared clan keys. Sign-in is email and password. Players join by an invitation link from the owner that is tied to a clan. Passwords are stored hashed. No outside sign-in or email service is used. |
 
@@ -41,6 +41,6 @@ Version 1.0 is done when all seven milestones are complete.
 2. **Hosting and accounts.** The game runs in the cloud over HTTPS with PostgreSQL, and each player signs in with a personal account.
 3. **Seasons and replayability.** Homeworlds and links vary between campaigns, a campaign ends with a victory screen, and a new season can be started.
 4. **Simple and advanced modes.** The two modes replace today's overlapping rule versions (economy, combat, logistics and materials switches).
-5. **Fill-in AI.** AI plays for any player who is missing, so a campaign never stalls.
+5. **Fill-in AI.** The campaign owner can hand any clan to the computer and take it back, and the computer plays a full season in either mode. Turns resolve at the deadline whether or not orders were sent, so a campaign never stalls.
 6. **Desktop polish and recorded verification.** The desktop experience is finished, and the verification that proves it is recorded.
 7. **Everything merged to main with CI.** All work is on `main`, and continuous integration runs the build and tests on every change.

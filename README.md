@@ -49,7 +49,7 @@ $env:Teams__1__Key = 'REPLACE_WITH_YOUR_EMBER_KEY_24_PLUS_CHARACTERS'
 
 These assignments affect this PowerShell process and the app it starts. Keep this window open and run **one** of the startup options below in it. Setting keys in another terminal does not configure this one.
 
-At the browser's clan login, enter the **value** you assigned to `Teams__0__Key` for **Aurora Federation**, or the value assigned to `Teams__1__Key` for **Ember Empire**. Enter only the key itself, without the variable name or surrounding PowerShell quotes. There is no separate username/password pair; members of a clan share its key. Empire is AI-controlled by default.
+At the browser's clan login, enter the **value** you assigned to `Teams__0__Key` for **Aurora Federation**, or the value assigned to `Teams__1__Key` for **Ember Empire**. Enter only the key itself, without the variable name or surrounding PowerShell quotes. There is no separate username/password pair; members of a clan share its key. Ember Empire is played by the computer by default; who plays each clan is set in the season dialog ([docs/COMPUTER-PLAYER.md](docs/COMPUTER-PLAYER.md)).
 
 ### 2A. Persistent local campaign (resume the same save)
 

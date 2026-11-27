@@ -1,5 +1,25 @@
 # Verification — 2026-10-14, Piedmont
 
+## Computer player (milestone 5) - 2026-11-26
+
+Branch `feature/fill-in-ai`, stacked on `feature/modes`. No deployment. The running playtest, its keys and its save were not touched; tests used throwaway saves and the same disposable embedded PostgreSQL as before.
+
+- `dotnet build Deepfield.sln --no-incremental`: 0 warnings, 0 errors.
+- `Deepfield.Checks` with `DEEPFIELD_TEST_POSTGRES` set: **346 checks passed**: the 330 from milestone 4 plus **16 computer-player checks**.
+- Computer-player checks cover: two computer clans finish a season on each of 12 maps in simple mode and in advanced mode (slowest 8 turns), with every plan re-checked against the rules people are held to; expeditions are paid for before collectors; collector buying stops at the winning condition; a recently defended system is tried last and attacked only with a larger force; interior colonies forward ships; a campaign from before modes keeps the original planner; a clan of people that misses a turn gives no orders; the owner hands a clan to the computer and back, both clans are told, the players' submitted orders are kept and used if the clan is handed back before the turn resolves; the setting carries into the next season.
+- `npm run test:seasons`: **45 checks** (8 new): both clans see who plays each clan; only the owner can change it; a computer-played clan refuses its players' orders with an explanation and accepts them again when handed back; in the browser the owner has one control per clan, a player sees the list without controls, and a player of a computer-played clan sees a notice that disappears when the clan is handed back.
+- All other suites unchanged and passing, run against the current Debug build with `DEEPFIELD_TEST_API_DLL` and `DEEPFIELD_TEST_WEBROOT` set: fleet-selection 39, fleet-component 12, intel-component 10, draft-session 29, draft-editing 25, draft-edit-ui 45, planet-component 28, star-map-component 13, real-sky-rotation-component 25, material-reservations 19, real-sky-projection, system-panel-component, planet-scale, planet-api 14, real-campaign-api 14, generated-campaign-api 22, smoke 73, accounts 30.
+
+Measured before the change, with the original planner on the same 12 maps for 80 turns: in simple mode 2 of 12 seasons never finished (collector purchases used all income, so no ships were built), and in advanced mode 1 of 12 never finished (both clans fed four ships a turn into the same system indefinitely).
+
+Not verified:
+
+- The computer against people. Every measurement is computer against computer, and an unopposed clan reaches the standard winning condition in about 8 turns, so these games say little about how it holds up against a player.
+- Winning conditions other than the standard one. In advanced mode collectors need two materials that mostly exist only at the homeworld, so a high collector target may be out of the computer's reach.
+- The component suites were run before a last change to the planner (movement is now planned before the remaining purchases). That change is in the engine only; the rules checks and all server-backed browser suites were rerun after it, the component suites were not.
+- The accounts suite with the hosted PostgreSQL configuration was not rerun (nothing in accounts changed).
+- The older `RealCampaignChecks` material check that fails by chance (see milestone 4) is unchanged and passed in these runs.
+
 ## Simple and advanced modes (milestone 4) - 2026-11-26
 
 Branch `feature/modes`, stacked on `feature/seasons`. No deployment. The running playtest, its keys and its save were not touched; tests used throwaway saves under `test-results/` or the system temp folder and the same disposable embedded PostgreSQL as before.
