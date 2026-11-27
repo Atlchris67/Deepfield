@@ -58,8 +58,12 @@ jobs:
         run: dotnet build Deepfield.sln --warnaserror || dotnet build Deepfield.sln --warnaserror
 
       # One older material check depends on random deposits and fails about one run in ten (docs/VERIFICATION.md), so a failure is tried once more.
+      # The planet checks also write the fixtures that the planet component suite reads.
       - name: Rules, storage and account checks
+        env:
+          DEEPFIELD_PLANET_FIXTURES: ${{ github.workspace }}/test-results/planet-fixtures.json
         run: |
+          mkdir -p test-results
           dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll > checks.log 2>&1 || {
             grep -v '^PASS' checks.log | tail -20
             echo "::warning::The rules checks failed once and were run again."
@@ -119,9 +123,17 @@ jobs:
         run: docker build -t deepfield:ci .
       - name: The image starts and answers its health check
         run: |
-          docker run -d --name deepfield -p 8080:8080 -e Teams__0__Key=ci-only-key-aurora-0000000000 -e Teams__1__Key=ci-only-key-ember-00000000000 -e SavePath=/tmp/campaign.json deepfield:ci
+          # Outside development the server requires PostgreSQL, so it gets a throwaway one on a private network.
+          docker network create deepfield-ci
+          docker run -d --name db --network deepfield-ci -e POSTGRES_USER=deepfield -e POSTGRES_PASSWORD=disposable-ci-only -e POSTGRES_DB=deepfield postgres:16
+          for i in $(seq 1 30); do docker exec db pg_isready -U deepfield -d deepfield > /dev/null 2>&1 && break; sleep 1; done
+          docker run -d --name deepfield --network deepfield-ci -p 8080:8080             -e "ConnectionStrings__Deepfield=Host=db;Port=5432;Database=deepfield;Username=deepfield;Password=disposable-ci-only"             -e Owner__SetupKey=ci-only-setup-key-000000000000 deepfield:ci
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8080/health > /dev/null; then echo "Healthy after ${i}s"; exit 0; fi
+            if curl -fsS http://127.0.0.1:8080/health > /dev/null 2>&1; then
+              echo "Healthy after ${i}s"
+              curl -fsS http://127.0.0.1:8080/ | grep -qi "<title" && echo "The web app is served"
+              exit 0
+            fi
             sleep 1
           done
           docker logs deepfield
