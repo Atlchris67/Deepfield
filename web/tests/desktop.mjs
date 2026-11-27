@@ -11,6 +11,8 @@ const dll=process.env.DEEPFIELD_TEST_API_DLL??resolve(root,'src/Deepfield.Api/bi
 const sizes=[[1280,720],[1440,900],[1920,1080]],password='desktop check password';
 // Spacekit 0.1.1 registers a sphere that has an orbit twice and logs this each time. It is harmless and the only message allowed.
 const knownLibraryMessage=/^Object id is not unique: "planet-\d+-\d+"/;
+// A machine with no graphics card (the CI runner) reports that taking a screenshot of the 3D sky was slow. It says nothing about the page.
+const noGraphicsCardMessage=/GL Driver Message .*GPU stall due to ReadPixels/;
 let count=0,browser;
 const check=(ok,label,detail='')=>{if(!ok)throw Error('FAIL '+label+(detail?' — '+detail:''));count++;console.log('PASS '+label);};
 
@@ -84,7 +86,7 @@ async function run(mode,port){
    await page.keyboard.press('Escape');await page.waitForTimeout(300);
    check(await page.locator('dialog[open]').count()===0&&await button.evaluate(e=>e===document.activeElement),`[${mode}] Escape closes the ${label} dialog and returns focus to its button`);
   }
-  const unexpected=[...new Set(messages)].filter(text=>!knownLibraryMessage.test(text));
+  const unexpected=[...new Set(messages)].filter(text=>!knownLibraryMessage.test(text)&&!noGraphicsCardMessage.test(text));
   check(unexpected.length===0,`[${mode}] The browser console shows no errors or warnings`,JSON.stringify(unexpected));
   await context.close();
  }finally{if(server.exitCode===null&&server.signalCode===null){const done=new Promise(r=>server.once('exit',r));server.kill();await done;}}
