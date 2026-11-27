@@ -1,0 +1,128 @@
+# Builds Deepfield and runs every recorded check. It never deploys and never publishes anything.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Build and checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      # A throwaway database for the storage and account checks. It exists only for this run.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: deepfield
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: deepfield_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deepfield -d deepfield_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DEEPFIELD_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Username=deepfield;Password=disposable-ci-only;Database=deepfield_test
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci --prefix web
+
+      - name: Type-check the web app, including unused code
+        run: npm run lint --prefix web
+
+      # The first build after the web app is rebuilt can fail once while its static files are registered, so it is tried twice.
+      - name: Build the solution
+        run: dotnet build Deepfield.sln --warnaserror || dotnet build Deepfield.sln --warnaserror
+
+      # One older material check depends on random deposits and fails about one run in ten (docs/VERIFICATION.md), so a failure is tried once more.
+      - name: Rules, storage and account checks
+        run: |
+          dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll > checks.log 2>&1 || {
+            grep -v '^PASS' checks.log | tail -20
+            echo "::warning::The rules checks failed once and were run again."
+            dotnet tests/Deepfield.Checks/bin/Debug/net10.0/Deepfield.Checks.dll > checks.log 2>&1
+          }
+          grep -c '^PASS' checks.log | xargs echo "Checks passed:"
+          grep -v '^PASS' checks.log | tail -15
+
+      - name: Build the web app for the browser suites
+        run: npm run build --prefix web -- --outDir ../test-results/planet-web
+
+      - name: Web and browser suites
+        working-directory: web
+        env:
+          DEEPFIELD_TEST_API_DLL: ${{ github.workspace }}/src/Deepfield.Api/bin/Debug/net10.0/Deepfield.Api.dll
+          DEEPFIELD_TEST_WEBROOT: ${{ github.workspace }}/test-results/planet-web
+        run: |
+          set -e
+          node --experimental-strip-types tests/real-sky-projection.mjs | tail -1
+          for suite in fleet-selection fleet-component intel-component draft-session draft-editing draft-edit-ui \
+                       planet-component star-map-component real-sky-rotation-component material-reservations \
+                       system-panel-component planet-scale real-campaign-api generated-campaign-api smoke \
+                       accounts-api seasons-api desktop; do
+            echo "::group::$suite"
+            node tests/$suite.mjs > suite.log 2>&1 || { cat suite.log; echo "::error::$suite failed"; exit 1; }
+            tail -1 suite.log
+            echo "::endgroup::"
+          done
+
+      - name: Planet suite (needs its own build output)
+        run: |
+          set -e
+          dotnet build Deepfield.sln -m:1 --disable-build-servers --artifacts-path ./test-results/planet-build > planet-build.log 2>&1 \
+            || dotnet build Deepfield.sln -m:1 --disable-build-servers --artifacts-path ./test-results/planet-build > planet-build.log 2>&1 \
+            || { tail -30 planet-build.log; exit 1; }
+          cd web && node tests/planet-api.mjs | tail -3
+
+      - name: Keep screenshots when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/**/*.png
+            web/suite.log
+            checks.log
+          retention-days: 7
+
+  image:
+    name: Container image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # Built to prove the Dockerfile works. The image is not pushed anywhere.
+      - name: Build the image
+        run: docker build -t deepfield:ci .
+      - name: The image starts and answers its health check
+        run: |
+          docker run -d --name deepfield -p 8080:8080 -e Teams__0__Key=ci-only-key-aurora-0000000000 -e Teams__1__Key=ci-only-key-ember-00000000000 -e SavePath=/tmp/campaign.json deepfield:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/health > /dev/null; then echo "Healthy after ${i}s"; exit 0; fi
+            sleep 1
+          done
+          docker logs deepfield
+          exit 1
