@@ -21,7 +21,7 @@ async function start(extra={}){
  for(let i=0;i<100;i++){if(processHandle.exitCode!==null)throw Error('API startup failed: '+logs);try{if((await fetch(base+'/health')).ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}
  throw Error('API startup timed out: '+logs);
 }
-async function stop(){if(processHandle&&processHandle.exitCode===null){const done=new Promise(r=>processHandle.once('exit',r));processHandle.kill();await done;}}
+async function stop(){if(processHandle&&processHandle.exitCode===null&&processHandle.signalCode===null){const done=new Promise(r=>processHandle.once('exit',r));processHandle.kill();await done;}}
 async function api(path,{team=0,method='GET',body,headers={}}={}){return fetch(base+'/api/'+path,{method,headers:{Authorization:'Bearer '+keys[team],...body?{'Content-Type':'application/json'}:{},...headers},body:body?JSON.stringify(body):undefined});}
 async function state(team=0){const res=await api('campaign',{team});assert.equal(res.status,200);return (await res.json()).campaign;}
 async function expedition(page,counts,target='1'){

@@ -18,6 +18,9 @@
 /* The planner heading lines up with the rest of the dialog. */
 .colonizationPlanner header{padding:0 0 14px;border-bottom:1px solid #23343b;margin-bottom:14px}
 
-/* In the narrower system panel of a 1280px window the four tabs and the orbit controls stay on one line, fully visible. */
+/* In the narrower system panel of a 1280px window the four tabs and the orbit controls are never cut off or broken inside a
+   button. With the usual fonts they fit one line; with a wider font the last one moves to a second line instead. */
+.inlineRealSky .systemTabs{flex-wrap:wrap;overflow-x:visible}
 .inlineRealSky .systemTabs button{font-size:14px;padding:8px 6px}
+.inlineRealSky .orbitZoomControls{flex-wrap:wrap}
 .inlineRealSky .orbitZoomControls button{white-space:nowrap;font-size:14px;padding:8px 12px}

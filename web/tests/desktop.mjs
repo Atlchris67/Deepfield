@@ -11,6 +11,8 @@ const dll=process.env.DEEPFIELD_TEST_API_DLL??resolve(root,'src/Deepfield.Api/bi
 const sizes=[[1280,720],[1440,900],[1920,1080]],password='desktop check password';
 // Spacekit 0.1.1 registers a sphere that has an orbit twice and logs this each time. It is harmless and the only message allowed.
 const knownLibraryMessage=/^Object id is not unique: "planet-\d+-\d+"/;
+// A machine with no graphics card (the CI runner) reports that taking a screenshot of the 3D sky was slow. It says nothing about the page.
+const noGraphicsCardMessage=/GL Driver Message .*GPU stall due to ReadPixels/;
 let count=0,browser;
 const check=(ok,label,detail='')=>{if(!ok)throw Error('FAIL '+label+(detail?' — '+detail:''));count++;console.log('PASS '+label);};
 
@@ -31,7 +33,7 @@ const sky=()=>{
  const names=[...document.querySelectorAll('.spacekitGalaxyLabels .realStarName')].map(e=>({name:e.textContent,r:e.getBoundingClientRect()})).filter(n=>n.r.width>0);
  const overlaps=[];for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){const a=names[i].r,b=names[j].r;if(a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top)overlaps.push(names[i].name+' / '+names[j].name);}
  const tabs=document.querySelector('.inlineRealSky .systemTabs'),controls=[...document.querySelectorAll('.inlineRealSky .orbitZoomControls button')];
- return {tabsFit:!!tabs&&tabs.scrollWidth<=tabs.clientWidth+1&&controls.length===3&&controls.every(e=>e.getBoundingClientRect().height<48),beside:!!galaxy&&!!details&&Math.abs(galaxy.top-details.top)<2,gap:galaxy&&details?Math.round(details.bottom-galaxy.bottom):null,height:galaxy?Math.round(galaxy.height):0,shown:names.length,overlaps,
+ return {tabsFit:!!tabs&&tabs.scrollWidth<=tabs.clientWidth+1&&[...tabs.children].every(e=>e.getBoundingClientRect().height<52)&&controls.length===3&&controls.every(e=>e.getBoundingClientRect().height<48),beside:!!galaxy&&!!details&&Math.abs(galaxy.top-details.top)<2,gap:galaxy&&details?Math.round(details.bottom-galaxy.bottom):null,height:galaxy?Math.round(galaxy.height):0,shown:names.length,overlaps,
   heading:document.querySelector('.realSystemDetails h3')?.textContent,chosen:document.querySelector('.realSystemDetails select')?.selectedOptions[0]?.textContent,
   active:document.querySelector('.spacekitGalaxyLabels .realStar.active .realStarName')?.textContent,text:document.querySelector('#campaign-details')?.innerText??''};
 };
@@ -61,7 +63,7 @@ async function run(mode,port){
    check(layout.overflowX<=0&&!layout.offscreen.length,`[${mode}] At ${width}×${height} the command deck has no sideways scrolling and nothing off the edge`,JSON.stringify(layout.offscreen));
    check(!layout.small.length&&!layout.unnamed.length,`[${mode}] At ${width}×${height} no text is under 11px and every control has a name`,JSON.stringify([layout.small,layout.unnamed]));
    check(view.beside&&view.height>=370&&(Math.abs(view.gap)<=2||view.height>=Math.max(650,height-40)-1),`[${mode}] At ${width}×${height} the sky sits beside the system panel and fills its height, up to the height of the window`,JSON.stringify({...view,text:''}));
-   check(view.tabsFit,`[${mode}] At ${width}×${height} the four system tabs and the orbit controls fit their panel on one line`);
+   check(view.tabsFit,`[${mode}] At ${width}×${height} the four system tabs and the orbit controls are fully visible, none cut off or broken inside a button`);
    check(view.shown>=8&&!view.overlaps.length,`[${mode}] At ${width}×${height} no star name covers another (${view.shown} of 24 names shown)`,JSON.stringify(view.overlaps));
    check(!!view.heading&&view.heading===view.chosen&&view.heading===view.active&&(mode==='simple'||view.text.includes('Selected system: '+view.heading+'.')),`[${mode}] At ${width}×${height} the sky, the system panel and (in advanced mode) the logistics panel start on the same system, one of the clan's colonies`,JSON.stringify([view.heading,view.chosen,view.active]));
   }
@@ -84,10 +86,10 @@ async function run(mode,port){
    await page.keyboard.press('Escape');await page.waitForTimeout(300);
    check(await page.locator('dialog[open]').count()===0&&await button.evaluate(e=>e===document.activeElement),`[${mode}] Escape closes the ${label} dialog and returns focus to its button`);
   }
-  const unexpected=[...new Set(messages)].filter(text=>!knownLibraryMessage.test(text));
+  const unexpected=[...new Set(messages)].filter(text=>!knownLibraryMessage.test(text)&&!noGraphicsCardMessage.test(text));
   check(unexpected.length===0,`[${mode}] The browser console shows no errors or warnings`,JSON.stringify(unexpected));
   await context.close();
- }finally{if(server.exitCode===null){const done=new Promise(r=>server.once('exit',r));server.kill();await done;}}
+ }finally{if(server.exitCode===null&&server.signalCode===null){const done=new Promise(r=>server.once('exit',r));server.kill();await done;}}
 }
 try{
  browser=await chromium.launch({channel:'msedge'});
