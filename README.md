@@ -161,3 +161,5 @@ The repository now has an agreed documentation baseline on main. Development is 
 See [typed fleet rules and local preview](docs/TYPED_FLEETS.md) for opt-in hulls, the expedition selector, settlement timing and a separate port/save path. Existing campaigns retain generic ship rules.
 
 For traditional solution files and IDE setup, see [Visual Studio build instructions](docs/VISUAL_STUDIO.md). Its earlier runtime-block notes describe those historical attempts; use the Windows startup section above for the current launch workflow.
+
+Optional future [build signing workflow](docs/SIGNING.md): dry-run planning and source-only checks, with no paid runtime dependency. No certificate or provider is selected, and nothing is signed today.

@@ -11,3 +11,4 @@ test-results/
 .vs/
 .vite/
 assets/concepts/
+artifacts/signing/
