@@ -26,4 +26,5 @@ await SeasonChecks.Run();
 ModeChecks.Run();
 PopulationChecks.Run();
 ClanChecks.Run();
+BalanceChecks.Run();
 AiChecks.Run();

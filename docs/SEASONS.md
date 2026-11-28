@@ -14,9 +14,15 @@ The game creator chooses it. It has three settings:
 
 | Setting | Standard | Allowed |
 | --- | --- | --- |
-| Colonies to win | 4 | 2 to 12 |
-| Collectors to win | 8 | from the number of colonies up to 60 |
+| Colonies to win | 5 | 2 to 12 |
+| Collectors to win | 12 | from the number of colonies up to 60 |
 | Turn limit | none (0) | 5 to 365 turns |
+
+The standard was 4 colonies and 8 collectors until the play-balance pass of 2026-11-28. It changed for **new campaigns
+only**: a campaign that already exists keeps the condition it has, including a save that stores none (that still
+means 4 and 8), and carries it into its next seasons unless the game creator chooses another. Computer-played seasons
+at the new standard last a median of 13 to 16 turns in simple mode and 11 in advanced mode, about two weeks at a
+turn a day.
 
 With a turn limit, a season nobody has won by the end of that turn goes to the clan with more colonies, then more
 collectors. Equal clans share the victory.

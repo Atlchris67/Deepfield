@@ -38,7 +38,7 @@ Set these as environment variables on the host. Never commit real values.
 | `Mode` | No | `simple` (default) or `advanced`: the rules of a **new** campaign. The owner can change it in the game before the first turn resolves and for each later season. See [MODES.md](MODES.md). |
 | `Clans` | No | `2` (default), `3` or `4`: the number of clans of a **new** campaign. The owner can change it for each season. See [CLANS.md](CLANS.md). |
 | `MapSeed` | No | Fixes the layout of a **new** campaign. Without it a hosted campaign gets a random layout. `0` is the original fixed layout. Later seasons always get a new random layout. |
-| `Victory__Colonies`, `Victory__Collectors`, `Victory__TurnLimit` | No | Winning condition of a **new** campaign (standard: 4, 8, and 0 for no turn limit). The owner can change it in the game before the first turn resolves and for each later season. |
+| `Victory__Colonies`, `Victory__Collectors`, `Victory__TurnLimit` | No | Winning condition of a **new** campaign (standard: 5, 12, and 0 for no turn limit). The owner can change it in the game before the first turn resolves and for each later season. |
 | `EmpireAi` | No | Whether the second clan of a **new** campaign starts out played by the computer (default `true`). The owner can change who plays each clan in the game at any time. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md). |
 
 Generate a setup key in PowerShell:

@@ -14,7 +14,7 @@ The goals, owner decisions, Stars! clean-room rule and definition of version 1.0
 | 6 | Desktop polish and recorded verification | Done, on `main`. Results are in [VERIFICATION.md](VERIFICATION.md) |
 | 7 | Everything merged to `main` with CI | Done. `main` holds all the work and is the default branch; CI (`.github/workflows/ci.yml`) runs the build, every recorded check and the container image on each pull request and each push to `main`. Pull requests #12, #14 and #15 were not included: see [VERIFICATION.md](VERIFICATION.md) |
 | 8 | Tidy up for 1.0 | Done, on `main`. Inhabitants added in both modes ([MODES.md](MODES.md)), the turn-limit tie-break confirmed, and this page brought up to date |
-| 9 | More than two clans, and a play-balance pass | **In review** (after 1.0's list; asked for by the owner on 2026-11-28). Seasons for two to four clans, many-sided battles and alliances: see [CLANS.md](CLANS.md). The play-balance pass follows as a separate change |
+| 9 | More than two clans, and a play-balance pass | **In review** (after 1.0's list; asked for by the owner on 2026-11-28). Seasons for two to four clans, many-sided battles and alliances: see [CLANS.md](CLANS.md). The play-balance pass is its second part: a longer standard season for new campaigns (5 colonies, 12 collectors), a computer player that finishes advanced seasons, inhabitants numbers kept. Measurements in [VERIFICATION.md](VERIFICATION.md) |
 
 ## What is left before version 1.0
 
