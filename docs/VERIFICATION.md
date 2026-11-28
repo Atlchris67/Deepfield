@@ -1,5 +1,52 @@
 # Verification — 2026-10-14, Piedmont
 
+## Play-balance pass (milestone 9, part 2) - 2026-11-28
+
+Owner decisions on 2026-11-28: a season of about two weeks; fix the computer player in advanced mode and give both
+modes the same length; keep the inhabitants numbers.
+
+What changed:
+
+- **Standard winning condition, new campaigns only:** 5 colonies and 12 collectors (was 4 and 8). A new simple or
+  advanced campaign stores it when it is created. Nothing reads a different default: a campaign that already exists,
+  including a save with no stored condition, keeps what it had and carries it into later seasons.
+- **Computer player, advanced mode:** it now carries collector materials by freighter. Before, it stopped at 11
+  collectors: a collector needs one Ceryth and one Soryl in the same colony's reach, the homeworld's stock ran out,
+  and the clan sat on thousands of unspent credits. This is planning only; no rule changed.
+- **Inhabitants:** numbers unchanged.
+
+Measured with `Deepfield.Checks --balance 400`: every clan played by the computer, map seeds 1 to 400, up to 150
+turns. These are computer against computer; seasons between people will differ.
+
+| Mode | Clans | Finished | Turns: least / median / 9 in 10 / most | Shared wins | Colonies full at the end | New colonies' inhabitants | Battles per season |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Simple | 2 | 400 of 400 | 10 / 13 / 19 / 29 | 10% | 26% | 66 | 17.7 |
+| Simple | 3 | 400 of 400 | 10 / 14 / 22 / 40 | 3% | 34% | 68 | 18.9 |
+| Simple | 4 | 395 of 400 | 11 / 16 / 25 / 46 | 2% | 40% | 70 | 21.1 |
+| Advanced | 2 | 399 of 400 | 8 / 11 / 15 / 56 | 24% | 31% | 66 | 2.5 |
+| Advanced | 3 | 397 of 400 | 8 / 11 / 14 / 42 | 23% | 34% | 67 | 3.4 |
+| Advanced | 4 | 397 of 400 | 8 / 11 / 19 / 124 | 16% | 40% | 69 | 6.2 |
+
+For comparison, at 4 colonies and 8 collectors (200 seasons a row, before the freight change): simple mode had a
+median of 10, 10 and 12 turns with 18 to 20%, 7 to 8% and 4 to 5% shared wins; advanced mode had a median of 7 turns
+and about 80% shared wins with two clans. At 5 and 12 before the freight change, advanced mode finished only 75, 98
+and 86 of 200 seasons.
+
+Checks: 421 rules checks pass (three runs in a row), including 18 new ones in `tests/Deepfield.Checks/BalanceChecks.cs`
+for the new standard, saves that keep the old one, and the freight. Locally the real-campaign, generated-campaign,
+smoke, accounts, seasons, clans, desktop and material-reservation suites pass; lint and the web build pass.
+
+Not done, or still open:
+
+- Advanced mode is still shorter than simple mode (median 11 turns against 13 to 16) and its computer players fight
+  far less (3 to 6 battles a season against 18 to 21). The season length is the same rule in both modes, as decided;
+  making the advanced computer player more aggressive is a separate piece of work.
+- About 1 in 5 advanced two-clan seasons is still a shared win (both computer clans finish in the same turn).
+- 5 of 400 simple four-clan seasons and 1 to 3 of 400 advanced seasons did not finish in 150 turns.
+- The homeworld-position imbalance with three or four clans (part 1, below) is unchanged.
+- The computer does not build freighters or gates. If it loses both starting freighters it cannot move materials.
+- No season at the new standard has been played by people.
+
 ## Two to four clans, and alliances (milestone 9, part 1) - 2026-11-28
 
 Branch `feature/more-clans`, from `main`. No deployment. The running playtest, its keys and its save were not touched.
@@ -21,7 +68,7 @@ Known imbalance: with three or four clans, homeworld position matters within a s
 
 Not done or not verified:
 
-- The play-balance pass (milestone 9, part 2) has not started. With more clans, computer-played seasons end sooner (13 turns against 18 with two clans), which that pass should look at.
+- The play-balance pass is recorded in its own section above.
 - Three- and four-clan games have not been played by people. The split-evenly battle rule and the homeworld fairness method are first settings.
 - The winning condition is the same for any number of clans. On a 24-system map with four clans, 4 colonies each uses 16 systems; the game creator may want a different condition.
 - Only Microsoft Edge on a desktop was tested. The alliances panel has not been checked with a screen reader.

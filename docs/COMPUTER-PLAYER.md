@@ -40,7 +40,12 @@ In campaigns with a mode (simple or advanced) it:
 - pays for those expeditions before anything else, then buys collectors until it has enough to win (in advanced
   mode also a colony's first three, because they add income), then scouts, then more ships;
 - in advanced mode, counters the ship types it last saw, builds a fixed defense when the other clan was seen next
-  door, and puts spare credits into mines and settlement growth.
+  door, and puts spare credits into mines and settlement growth;
+- in advanced mode, moves collector materials by freighter. A collector needs one Ceryth and one Soryl within the
+  same colony's reach, and a homeworld's starting stock runs out near the eleventh. When the collectors it still
+  owes need more than the colony with the most collectors can reach, it sends one freighter to each colony that
+  holds some and brings back as much as the freighter carries, one jump a turn, relaying through its own colonies.
+  It does not build freighters or gates; it uses the two freighters a homeworld starts with.
 
 It does not use freighters, gates or ship design, it does not coordinate several colonies against one target, and
 it does not defend a threatened colony by recalling ships. It is a sparring partner, not a strong opponent.

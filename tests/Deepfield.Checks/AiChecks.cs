@@ -55,7 +55,7 @@ public static class AiChecks
         var plan0 = Rules.PlanAi(Rules.Observe(poor, 0));
         Check(plan0.Any(o => o.Kind == "build" && o.Ships == 2) && plan0.All(o => o.Kind != "collector") && plan0.All(o => o.Kind != "move"),
             "A frontier colony short of ships builds its expedition before buying collectors, and waits until it is ready");
-        var done = Fresh(3, Modes.Simple); Home(done, 0).Collectors = 8; done.Clans[0].Credits = 200;
+        var done = Fresh(3, Modes.Simple); Home(done, 0).Collectors = Rules.Victory(done).Collectors; done.Clans[0].Credits = 200;
         Check(Rules.PlanAi(Rules.Observe(done, 0)).All(o => o.Kind != "collector"), "The computer stops buying collectors once it has enough to win in simple mode");
         var paying = Fresh(3, Modes.Advanced); Home(paying, 0).Collectors = 8; paying.Clans[0].Credits = 200; Home(paying, 0).Collectors = 2; paying.Victory = new(4, 2, 0);
         Check(Rules.PlanAi(Rules.Observe(paying, 0)).Any(o => o.Kind == "collector"), "In advanced mode it still buys a colony's first three collectors, because they add income");

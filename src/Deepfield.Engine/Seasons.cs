@@ -11,6 +11,11 @@ public sealed record SeasonRecord(int Season, int? Winner, int Turns, DateTimeOf
 /// </summary>
 public sealed record VictoryRule(int Colonies = 4, int Collectors = 8, int TurnLimit = 0)
 {
+    /// <summary>
+    /// The condition a new campaign with a mode starts with (play-balance pass, owner decision 2026-11-28): a season of about
+    /// two weeks. The constructor defaults stay 4 and 8 because they are what a campaign saved without a condition has always meant.
+    /// </summary>
+    public static VictoryRule Standard => new(5, 12, 0);
     public const int MinimumColonies = 2, MaximumColonies = 12, MaximumCollectors = 60, MinimumTurnLimit = 5, MaximumTurnLimit = 365;
     public VictoryRule Validated()
     {

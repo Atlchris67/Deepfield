@@ -24,8 +24,8 @@ int RandomMapSeed()=>RandomNumberGenerator.GetInt32(1,int.MaxValue);
 int NewMapSeed()=>builder.Configuration.GetValue<int?>("MapSeed")??(authMode=="accounts"?RandomMapSeed():0);
 // The winning condition of a new campaign. The game creator can change it before the first turn resolves and for each later season.
 VictoryRule? ConfiguredVictory()=>builder.Configuration.GetSection("Victory").Exists()
-    ? new VictoryRule(builder.Configuration.GetValue("Victory:Colonies",4),builder.Configuration.GetValue("Victory:Collectors",8),builder.Configuration.GetValue("Victory:TurnLimit",0)).Validated() : null;
-Game NewGame(){var game=NewCampaign();game.Victory=ConfiguredVictory();return game;}
+    ? new VictoryRule(builder.Configuration.GetValue("Victory:Colonies",VictoryRule.Standard.Colonies),builder.Configuration.GetValue("Victory:Collectors",VictoryRule.Standard.Collectors),builder.Configuration.GetValue("Victory:TurnLimit",0)).Validated() : null;
+Game NewGame(){var game=NewCampaign();if(ConfiguredVictory() is {} configured)game.Victory=configured;return game;}
 // A hosted campaign with personal accounts is created in a mode chosen by its creator: the Mode setting, or simple.
 // The owner can still change it in the game before the first turn resolves. Modes always use the real-star map.
 // A clan-key development server keeps the older rule-version settings unless Mode is set, so existing saves and tests are unchanged.

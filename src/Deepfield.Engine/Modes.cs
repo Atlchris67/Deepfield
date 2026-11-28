@@ -30,6 +30,7 @@ public static class Modes
             ? Rules.CreateFromMap(map, now, ai, economyVersion: 1, combatVersion: 1, logisticsVersion: 1, industrialFocus)
             : Rules.CreateFromMap(map, now, ai, economyVersion: 0, combatVersion: 0, logisticsVersion: 0);
         game.Mode = mode;
+        game.Victory = VictoryRule.Standard;
         // Inhabitants: both modes. Homeworlds start full, so the opening income is the same as before.
         game.PopulationVersion = 1;
         foreach (var star in game.Stars.Where(star => star.Owner is not null)) star.Inhabitants = Population.Capacity;

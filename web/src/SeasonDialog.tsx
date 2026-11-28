@@ -9,6 +9,7 @@ export function winnersOf(winner:number|null,winners:number[]|null|undefined,cla
 const list=(names:string[])=>names.length<2?names.join(''):names.slice(0,-1).join(', ')+' and '+names[names.length-1];
 export type Seat={name:string;computer:boolean};
 export type VictoryRule={colonies:number;collectors:number;turnLimit:number};
+// Only a fallback for a campaign view without a condition: what a save from before winning conditions means. New campaigns get theirs (5 and 12) from the server.
 export const standardVictory:VictoryRule={colonies:4,collectors:8,turnLimit:0};
 export type SeasonRecord={season:number;winner:number|null;turns:number;started:string|null;ended:string;standings:Standing[];mapSeed:number;winners?:number[]|null};
 

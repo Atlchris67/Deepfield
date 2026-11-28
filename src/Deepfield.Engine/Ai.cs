@@ -74,6 +74,7 @@ public static class Ai
                 if (moving > 0) Try(new("move", s.Id, target.Id, moving, Hull: TypedCombat.Name(h)), 0);
             }
         }
+        if (v.LogisticsVersion == 1 && collectors < rule.Collectors) Freight(v, mine, rule.Collectors - collectors, Try);
         foreach (var (s, _, _, needed, escorts, built) in plans)
         {
             if (v.EconomyVersion == 1 && s.Defense <= 4 &&
@@ -98,6 +99,56 @@ public static class Ai
             if (industry && budget >= 100 && s.SettlementSize < 4) Try(new("settlement", s.Id), 20);
         }
         return orders;
+    }
+
+    const int Ceryth = 2, Soryl = 4; // The two materials a collector uses.
+
+    // Advanced mode: a collector needs one Ceryth and one Soryl in the same colony's reach, and a homeworld starts with
+    // enough for about eleven. When the collectors still owed need more, freighters carry both materials, one jump a turn,
+    // to the colony that builds collectors. A freighter with nothing useful aboard heads for the nearest colony that has some.
+    static void Freight(View v, List<StarView> mine, int owed, Func<Order, int, bool> attempt)
+    {
+        if (mine.Count < 2) return;
+        var hub = mine.OrderByDescending(s => s.Collectors ?? 0).ThenByDescending(s => (s.AccessibleMaterials?[Ceryth] ?? 0) + (s.AccessibleMaterials?[Soryl] ?? 0)).ThenBy(s => s.Id).First();
+        var wanted = new[] { Ceryth, Soryl }.Where(m => (hub.AccessibleMaterials?[m] ?? 0) < owed).ToArray();
+        if (wanted.Length == 0) return;
+        var network = Logistics.Access(v, hub.Id).Select(s => s.Id).ToHashSet();
+        Dictionary<int, int> Hops(IEnumerable<StarView> from)
+        {
+            var hops = new Dictionary<int, int>(); var queue = new Queue<StarView>();
+            foreach (var start in from) { hops[start.Id] = 0; queue.Enqueue(start); }
+            while (queue.TryDequeue(out var at))
+                foreach (var next in mine.Where(s => !hops.ContainsKey(s.Id) && Rules.Linked(v, at.Id, s.Id))) { hops[next.Id] = hops[at.Id] + 1; queue.Enqueue(next); }
+            return hops;
+        }
+        int Useful(StarView s) => wanted.Sum(m => s.Stockpile?[m] ?? 0);
+        var toHub = Hops(mine.Where(s => network.Contains(s.Id)));
+        var sources = mine.Where(s => !network.Contains(s.Id) && toHub.ContainsKey(s.Id) && Useful(s) > 0).ToList();
+        if (sources.Count == 0) return;
+        // Sources nobody is serving yet: no freighter there, and none already on its way out.
+        var unserved = sources.Where(s => (s.Freighters ?? 0) == 0).OrderBy(s => toHub[s.Id]).ThenBy(s => s.Id).ToList();
+        var toSource = unserved.Count == 0 ? [] : Hops(unserved);
+        StarView? Step(StarView from, Dictionary<int, int> hops) => !hops.TryGetValue(from.Id, out var here) || here == 0 ? null
+            : mine.Where(s => Rules.Linked(v, from.Id, s.Id) && hops.TryGetValue(s.Id, out var there) && there < here).OrderBy(s => s.Id).FirstOrDefault();
+        var outbound = mine.Where(s => !network.Contains(s.Id) && (s.Freighters ?? 0) > 0 && Useful(s) == 0).Sum(s => s.Freighters ?? 0);
+        foreach (var s in mine.Where(s => (s.Freighters ?? 0) > 0 && s.Stockpile is not null && toHub.ContainsKey(s.Id)))
+        {
+            var freighters = s.Freighters!.Value; var cargo = new int[Materials.Count];
+            if (!network.Contains(s.Id) && Useful(s) > 0)
+            {
+                // Homeward: as much of what is wanted as the freighters here can carry.
+                var room = Math.Min(100, freighters * Logistics.FreighterCapacity);
+                foreach (var m in wanted) { cargo[m] = Math.Min(room, Math.Min(s.Stockpile![m], owed)); room -= cargo[m]; }
+                if (Step(s, toHub) is { } next) attempt(new("transport", s.Id, next.Id, (cargo.Sum() + Logistics.FreighterCapacity - 1) / Logistics.FreighterCapacity, Cargo: cargo), 0);
+                continue;
+            }
+            // Outward: one freighter for each source that has none, carrying a token unit because a freighter cannot travel empty.
+            var sending = network.Contains(s.Id) ? Math.Min(freighters, unserved.Count - outbound) : freighters;
+            var token = Enumerable.Range(0, Materials.Count).Where(m => !wanted.Contains(m)).OrderByDescending(m => s.Stockpile![m]).First();
+            if (sending <= 0 || s.Stockpile![token] == 0 || Step(s, toSource) is not { } outward) continue;
+            cargo[token] = 1;
+            if (attempt(new("transport", s.Id, outward.Id, sending, Cargo: cargo), 0) && network.Contains(s.Id)) outbound += sending;
+        }
     }
 
     static Intelligence? Sighting(View v, int star) => v.Intelligence?.Where(i => i.Star == star && i.EnemyPresent == true && v.Turn - i.Turn <= Memory)
