@@ -13,6 +13,12 @@ Run locally on Windows (.NET 10, Microsoft Edge), and by CI on the pull request:
 - New `npm run test:clans` (`web/tests/clans-api.mjs`): **25 API and browser checks** with a real server and Microsoft Edge: the owner sets a season to three clans, a third player is invited, an alliance is offered and accepted in the browser, sight is shared from the next turn, the map marks the ally, notice ends it, an ally shares a win and the third clan sees a defeat naming both winners, the next season runs with four clans and then two, a clan with players cannot be dropped, and optional third and fourth clan keys work.
 - Unchanged counts: `test:seasons` 45, `test:accounts` 30, `test:smoke` 73, `test:desktop` 58, real-campaign API 14, generated-campaign API 22. `npm run lint` clean.
 
+Seat fairness, measured with computer-played simple-mode seasons on 4,000 map seeds per clan count: wins by clan were 2400 and 2373 with two clans; 1451, 1449 and 1408 with three; 1062, 1114, 1019 and 1033 with four. No clan position is favoured.
+
+Correction: the commit "rotate the odd ship's target between equally strong enemies" says the first clan won measurably fewer seasons. That came from a 1,000-season sample and did not hold on the 4,000 fresh seeds above, with or without the change. The rotation is kept because it is the fairer rule, not because it fixed a measured problem.
+
+Known imbalance: with three or four clans, homeworld position matters within a season. Over the same 4,000 four-clan seasons the homeworld with the lowest system number won 847 times against 1007 to 1200 for the others. Homeworlds are handed out at random, so no clan is favoured over many seasons, but one clan can start a season worse placed. The play-balance pass should look at this.
+
 Not done or not verified:
 
 - The play-balance pass (milestone 9, part 2) has not started. With more clans, computer-played seasons end sooner (13 turns against 18 with two clans), which that pass should look at.
