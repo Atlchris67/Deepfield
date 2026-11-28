@@ -12,7 +12,7 @@ Verified by CI on this branch (Linux, .NET 10, Microsoft Edge, throwaway Postgre
 - The 24 inhabitant checks cover, in both modes: the growth and income numbers; homeworlds starting full with the opening income unchanged; a colony founded with 20 inhabitants earning 7 credits; a kind world growing by 15 a turn and a harsh one by 3; what a clan is and is not shown; saving and loading; the limit of 100; a fallen colony starting again from 20; invalid saves being rejected; a save from before inhabitants loading unchanged and still paying 15 per colony; its next season starting with inhabitants; and the computer player choosing by its scouts' reports and not by the hidden score.
 - Two mode checks were updated, because a newly founded colony now earns 7 credits and not 15.
 - Every web and browser suite passed with unchanged counts, except the desktop suite, which has one new check per mode (58): a colony's inhabitants, growth and habitability are shown, and the income line explains the rule.
-- The computer player still finishes a season on every test map in both modes.
+- The computer player still finishes a season on every test map in both modes. Simple-mode seasons take longer, because new colonies earn less at first: the slowest of 12 test maps went from 12 turns to 19. Advanced mode is unchanged at 9.
 - The container image builds and starts.
 
 Not verified:

@@ -69,11 +69,11 @@ async function run(mode,port){
   }
   await page.setViewportSize({width:1440,height:900});await page.waitForTimeout(500);
   // Inhabitants: the starting system is one of the clan's colonies, full or still growing; the income line explains the rule.
-  await page.locator('.inlineRealSky .systemTabs').getByRole('tab',{name:'Resources'}).click();
+  await page.locator('.inlineRealSky .systemTabs').getByRole('tab',{name:'Resources'}).focus();await page.keyboard.press('Enter'); // By keyboard, so the keyboard-focus checks below still apply.
   const people=await page.locator('.inlineRealSky .systemFacts div').filter({has:page.locator('dt',{hasText:/^Inhabitants$/})}).locator('dd').first().textContent();
   const incomeLine=await page.getByText(/Projected income: \d+ credits next turn\./).first().textContent();
   check(/^(100 of 100, full|\d+ of 100, growing by \d+ a turn) \(habitability \d+\/100\)$/.test(people??'')&&/A colony earns 5 to 15 credits as its inhabitants grow/.test(incomeLine??''),`[${mode}] The clan's colony shows its inhabitants, growth and habitability, and the income line explains that inhabitants set a colony's income`,JSON.stringify([people,incomeLine]));
-  await page.locator('.inlineRealSky .systemTabs').getByRole('tab',{name:'Orbit'}).click();
+  await page.locator('.inlineRealSky .systemTabs').getByRole('tab',{name:'Orbit'}).focus();await page.keyboard.press('Enter');
   // A star whose name is hidden shows it when reached with the keyboard, and choosing it moves every panel.
   const crowded=page.locator('.spacekitGalaxyLabels .realStar.crowded').first();
   if(await crowded.count()){
