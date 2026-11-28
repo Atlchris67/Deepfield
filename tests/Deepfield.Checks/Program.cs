@@ -1,3 +1,4 @@
+if (args.Contains("--balance")) { BalanceReport.Run(args); return; }
 if (args.Contains("--clans")) { ClanChecks.Run(); return; }
 if (args.Contains("--real-campaign")) { await RealCampaignChecks.Run(); return; }
 if (args.Contains("--ai")) { AiChecks.Run(); return; }
