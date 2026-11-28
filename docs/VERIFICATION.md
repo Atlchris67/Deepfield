@@ -1,5 +1,26 @@
 # Verification — 2026-10-14, Piedmont
 
+## Inhabitants, and tidy up for 1.0 (milestone 8) - 2026-11-27
+
+Branch `feature/tidy-1.0`, from `main`. No deployment. The running playtest, its keys and its save were not touched.
+
+Owner decisions recorded: habitability always affects the growth rate of a colony's inhabitants; inhabitants drive colony income; the turn-limit tie-break is confirmed as built. The rule and its numbers are in [MODES.md](MODES.md).
+
+Verified by CI on this branch (Linux, .NET 10, Microsoft Edge, throwaway PostgreSQL 16):
+
+- `Deepfield.Checks` with PostgreSQL: **370 checks passed** (346 before, plus 24 inhabitant checks). The real-campaign checks passed 40 more times.
+- The 24 inhabitant checks cover, in both modes: the growth and income numbers; homeworlds starting full with the opening income unchanged; a colony founded with 20 inhabitants earning 7 credits; a kind world growing by 15 a turn and a harsh one by 3; what a clan is and is not shown; saving and loading; the limit of 100; a fallen colony starting again from 20; invalid saves being rejected; a save from before inhabitants loading unchanged and still paying 15 per colony; its next season starting with inhabitants; and the computer player choosing by its scouts' reports and not by the hidden score.
+- Two mode checks were updated, because a newly founded colony now earns 7 credits and not 15.
+- Every web and browser suite passed with unchanged counts, except the desktop suite, which has one new check per mode (58): a colony's inhabitants, growth and habitability are shown, and the income line explains the rule.
+- The computer player still finishes a season on every test map in both modes.
+- The container image builds and starts.
+
+Not verified:
+
+- Balance with people playing. The numbers (20 at founding, 3 to 15 a turn, 5 to 15 credits) are a first setting.
+- The browser suites were run by CI only. The development machine's Application Control policy blocked the newly built server, and that policy was left alone. The rules checks ran on the development machine before the last small change and in CI after it.
+- No screenshot review of the new Inhabitants line by a person.
+
 ## Continuous integration and merge to main (milestone 7) - 2026-11-27
 
 Branch `feature/ci`, stacked on `feature/desktop-polish`, with `feature/merge-signing` on top. No deployment. The running playtest, its keys and its save were not touched.
