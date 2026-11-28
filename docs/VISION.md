@@ -13,7 +13,7 @@ These were decided by the owner and are not open for reinterpretation by contrib
 | Setting | Real stars set the scene: real names and positions, not a scientific simulation. Habitability is a simulated score, and it always affects how fast a colony's inhabitants grow (decided 2026-11-27; see [MODES.md](MODES.md)). |
 | Rules depth | A simple default mode plus an advanced mode. The person who starts a game chooses the mode when setting that game up; it is a per-campaign choice, not a server-wide setting. |
 | Campaign length | A campaign lasts a few weeks. After that, play continues in seasons. |
-| Players | Two clans now, designed so more can be added. |
+| Players | Two to four clans; the game creator chooses for each season. With three or four, clans can form alliances (decided 2026-11-28; see [CLANS.md](CLANS.md)). |
 | Missing players | The computer plays a clan only when the campaign owner sets that clan to computer play (decided 2026-11-26). It never steps in by itself: when players miss a turn, their clan gives no orders that turn. Computer play is for testing and for a clan nobody is playing. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md). |
 | Hosting | Cloud hosting with HTTPS and PostgreSQL. The move to a cloud provider is **postponed** (owner, 2026-11-26); the provider will be chosen when hosting resumes, so the build stays provider-neutral: one container image and a PostgreSQL connection string. Nothing is deployed without the owner's go-ahead. When hosting does go live it starts a fresh campaign; the family playtest is not moved onto it. See [HOSTING.md](HOSTING.md). |
 | Inhabitants | Every colony has inhabitants in both modes. They grow faster on a more habitable world, and a colony's income rises with them (decided 2026-11-27). |

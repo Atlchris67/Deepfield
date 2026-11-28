@@ -27,6 +27,8 @@ public class Clan
     public int[]? Materials { get; set; }
     public int IndustrialFocus { get; set; }
     public string[] ShipDesigns { get; set; } = ShipDesign.Defaults();
+    // Clans this clan has offered an alliance to and that have not answered yet.
+    public List<int> AllianceOffers { get; set; } = [];
 }
 public class Star
 {
@@ -79,6 +81,10 @@ public class Game
     public string? Mode { get; set; }
     // Zero is a campaign from before inhabitants: flat colony income. One: see Population.
     public int PopulationVersion { get; set; }
+    // Alliances between clans; see Alliances. Always empty in a two-clan campaign.
+    public List<Pact> Pacts { get; set; } = [];
+    // Every clan that won the season: one clan, or several when a win is shared. Null in saves from before more than two clans.
+    public List<int>? Winners { get; set; }
 }
 public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null, int? Defense = null, int[][]? Fleets = null, PlanetStats? Statistics = null,
     int? Mines = null, int? SettlementSize = null, int? HomePlanetId = null, int[]? MaterialYield = null,
@@ -92,13 +98,18 @@ public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, str
     int? RealCatalogVersion = null, IReadOnlyList<CatalogSystem>? RealSystems = null, int[]? Materials = null,
     int IndustrialFocus = 0, int LogisticsVersion = 0, string[]? ShipDesigns = null,
     int Season = 1, Outcome? Outcome = null, IReadOnlyList<SeasonRecord>? History = null, VictoryRule? Victory = null, string? Mode = null,
-    IReadOnlyList<Seat>? Seats = null);
+    IReadOnlyList<Seat>? Seats = null,
+    // Alliances are public. Offers are shown only to the two clans involved.
+    IReadOnlyList<Pact>? Pacts = null, IReadOnlyList<int>? AllianceOffersMade = null, IReadOnlyList<int>? AllianceOffersReceived = null,
+    IReadOnlyList<int>? Allies = null, IReadOnlyList<int>? Winners = null);
 /// <summary>Who plays a clan: its players, or the computer when the campaign owner has set it so.</summary>
 public record Seat(string Name, bool Computer);
 public sealed class RuleException(string message) : Exception(message);
 
 public static class Rules
 {
+    public const int MaximumClans = 4;
+    public static readonly string[] ClanNames = ["Aurora Federation", "Ember Empire", "Tidal Concord", "Verdant League"];
     public static Game Create(int seed, DateTimeOffset now, bool ai = true, int economyVersion = 0, int combatVersion = 0, string? reconEntropy = null)
     {
         if(economyVersion is not (0 or 1)) throw new RuleException("Unknown economy version.");
@@ -119,27 +130,29 @@ public static class Rules
     {
         if (logisticsVersion is not (0 or 1) || (logisticsVersion == 1 && map.RealCatalogVersion is null))
             throw new RuleException("Local logistics requires a real-system campaign.");
-        industrialFocus ??= [0, 0];
-        if (industrialFocus.Length != 2 || industrialFocus.Any(focus => focus is < -2 or > 2) ||
+        var players = map.Settings.PlayerCount;
+        industrialFocus ??= new int[players];
+        if (industrialFocus.Length != players || industrialFocus.Any(focus => focus is < -2 or > 2) ||
             (map.RealCatalogVersion is null && industrialFocus.Any(focus => focus != 0)))
             throw new RuleException("Clan industrial focus must be between -2 and 2 in a real-system campaign.");
-        if (map.GeneratorVersion != StarMapGenerator.CurrentVersion || map.Settings.PlayerCount != 2 || map.Settings.SystemCount < 4)
-            throw new RuleException("Playable campaigns require a current two-player star map with at least four systems.");
-        var expected = map.RealCatalogVersion is null ? StarMapGenerator.Generate(map.Seed, map.Settings) : RealStarMap.Generate(map.Seed);
+        if (map.GeneratorVersion != StarMapGenerator.CurrentVersion || players is < 2 or > MaximumClans || (players > 2 && map.RealCatalogVersion is null) || map.Settings.SystemCount < 4)
+            throw new RuleException("Playable campaigns require a current star map with at least four systems, for two clans, or up to four on the real-star map.");
+        var expected = map.RealCatalogVersion is null ? StarMapGenerator.Generate(map.Seed, map.Settings) : RealStarMap.Generate(map.Seed, players);
         if (!System.Text.Json.JsonSerializer.Serialize(expected).Equals(System.Text.Json.JsonSerializer.Serialize(map), StringComparison.Ordinal))
             throw new RuleException("Star map snapshot does not match its generator settings.");
         // Initialize typed fleets only after replacing the legacy layout with this map.
         var game = Create(map.Seed, now, ai, economyVersion, combatVersion: 0, reconEntropy: reconEntropy);
         game.GeneratedMap = map;
+        for (var extra = 2; extra < players; extra++) game.Clans.Add(new() { Name = ClanNames[extra], Ai = ai });
         game.LogisticsVersion = logisticsVersion;
         game.MaterialsVersion = map.RealCatalogVersion is null ? 0 : 1;
-        for (var team = 0; team < 2; team++) game.Clans[team].IndustrialFocus = industrialFocus[team];
+        for (var team = 0; team < players; team++) game.Clans[team].IndustrialFocus = industrialFocus[team];
         if (map.RealCatalogVersion is not null && logisticsVersion == 0)
             foreach (var clan in game.Clans) clan.Materials = Materials.StartingStock();
         var homeworlds = map.Homeworlds.Select(home => home.SystemId).ToHashSet();
         game.Stars = map.Systems.Select(s => new Star
         {
-            Id = s.Id, Name = s.Name, X = s.X, Y = s.Y,
+            Id = s.Id, Name = s.Name, X = s.X, Y = s.Y, Ships = new int[players], Scouts = new int[players], Freighters = new int[players],
             Environment = map.RealCatalogVersion is not null ? Habitability.Generate(game.ReconEntropy!, s.Id, homeworlds.Contains(s.Id)) : null
         }).ToList();
         foreach (var clan in game.Clans) clan.Known.Clear();
@@ -167,9 +180,12 @@ public static class Rules
     public static View Observe(Game g, int team)
     {
         var c = g.Clans[team];
+        // Allies share sight: what an ally sees and has charted counts as seen and charted. Everything else stays the clan's own.
+        var sight = Alliances.Allies(g, team).Prepend(team).ToArray();
+        var charted = sight.Length == 1 ? c.Known : sight.SelectMany(t => g.Clans[t].Known).Distinct().ToList();
         var access = g.LogisticsVersion == 1 ? Logistics.Capture(g) : null;
         return new(g.Turn, g.Deadline, g.Winner, team, c.Name, c.Credits, c.Revision, [..c.Orders], [..c.Reports], [..c.Messages],
-            g.Stars.Select(s => { var visible = s.Owner == team || s.Ships[team] > 0; var known = c.Known.Contains(s.Id);
+            g.Stars.Select(s => { var visible = sight.Any(t => s.Owner == t || s.Ships[t] > 0); var known = charted.Contains(s.Id);
                 var star = new StarView(s.Id, known || g.GeneratedMap?.RealCatalogVersion != null ? s.Name : "Uncharted", s.X, s.Y, known, visible, visible ? s.Owner : null, visible ? s.Collectors : null, visible ? [..s.Ships] : null, visible ? [..s.Scouts] : null, visible ? s.Defense : null, visible ? s.Fleets?.Select(f=>f.ToArray()).ToArray() : null,
                     Mines: visible ? s.Mines : null, SettlementSize: visible ? s.SettlementSize : null, HomePlanetId: visible ? s.HomePlanetId : null,
                     MaterialYield: visible && s.Owner == team && Modes.Industry(g) ? Materials.Production(g, s) : null,
@@ -183,15 +199,18 @@ public static class Rules
                     InhabitantGrowth: s.Owner == team && Population.Enabled(g) ? Population.Growth(s) : null,
                     ColonyIncome: s.Owner == team && Population.Enabled(g) ? Economy.Income(g, s) : null,
                     Habitability: s.Owner == team && Population.Enabled(g) && s.Environment is not null ? Engine.Habitability.Score(s.Environment) : null);
-                return star with { Statistics = PlanetStatistics.Project(star, c.Intelligence, team, g.Turn, g.EconomyVersion) }; }).ToList(),
+                return star with { Statistics = PlanetStatistics.Project(star, c.Intelligence, team, g.Turn, g.EconomyVersion, g.Clans.Count) }; }).ToList(),
             g.Stars.Where(s => s.Owner == team).Sum(s => s.Collectors), Intelligence: [..c.Intelligence], ReconRates: g.ReconRates,
             EconomyVersion: g.EconomyVersion, NextIncome: g.Stars.Where(s=>s.Owner==team).Sum(s=>Economy.Income(g,s)), CombatVersion: g.CombatVersion,
             Links: g.GeneratedMap?.Links, MapWidth: g.GeneratedMap?.Settings.Width, MapHeight: g.GeneratedMap?.Settings.Height,
             RealCatalogVersion: g.GeneratedMap?.RealCatalogVersion,
-            RealSystems: g.GeneratedMap?.RealSystems?.Select(host => host with { Planets = c.Known.Contains(host.Id) ? host.Planets : [] }).ToArray(),
+            RealSystems: g.GeneratedMap?.RealSystems?.Select(host => host with { Planets = charted.Contains(host.Id) ? host.Planets : [] }).ToArray(),
             Materials: c.Materials?.ToArray(), IndustrialFocus: c.IndustrialFocus, LogisticsVersion: g.LogisticsVersion,
             ShipDesigns: [..c.ShipDesigns],
-            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g), Mode: g.Mode, Seats: g.Clans.Select(clan => new Seat(clan.Name, clan.Ai)).ToArray()) { Goal = Victory(g).Collectors };
+            Season: g.Season, Outcome: Seasons.Outcome(g), History: [..g.History], Victory: Victory(g), Mode: g.Mode, Seats: g.Clans.Select(clan => new Seat(clan.Name, clan.Ai)).ToArray(),
+            Pacts: [..g.Pacts], AllianceOffersMade: [..c.AllianceOffers],
+            AllianceOffersReceived: Enumerable.Range(0, g.Clans.Count).Where(other => g.Clans[other].AllianceOffers.Contains(team)).ToArray(),
+            Allies: sight.Skip(1).ToArray(), Winners: g.Winners?.ToArray()) { Goal = Victory(g).Collectors };
     }
     public static void Validate(View v, List<Order> orders)
     {
@@ -364,19 +383,20 @@ public static class Rules
     public static bool Resolve(Game g, DateTimeOffset now)
     {
         if (g.Winner != null || now < g.Deadline) return false;
-        for (var t = 0; t < 2; t++)
+        var n = g.Clans.Count;
+        for (var t = 0; t < n; t++)
         {
             var c = g.Clans[t];
             if (c.Ai) c.Orders = PlanAi(Observe(g,t));
             c.Reports.Insert(0,$"Turn {g.Turn}: {c.Orders.Count} orders executed.");
         }
-        var delta = new int[g.Stars.Count,2];
-        var typedDelta=new int[g.Stars.Count,2,5];
+        var delta = new int[g.Stars.Count,n];
+        var typedDelta=new int[g.Stars.Count,n,5];
         var access = g.LogisticsVersion == 1 ? Logistics.Capture(g) : null;
         var transfers = new List<(int Team, int Target, int Ships, int[] Cargo)>();
         var scoutTransports = new List<(int Team, int Target, int Scouts)>();
         var refits = new List<(int Team, int Hull, string Package)>();
-        for (var t = 0; t < 2; t++) foreach (var o in g.Clans[t].Orders)
+        for (var t = 0; t < n; t++) foreach (var o in g.Clans[t].Orders)
         {
             var s = g.Stars[o.Source]; var c = g.Clans[t];
             var required = Materials.Cost(o);
@@ -398,23 +418,18 @@ public static class Rules
             if (o.Kind == "transport") { s.Freighters[t] -= o.Ships; transfers.Add((t, o.Target, o.Ships, o.Cargo!.ToArray())); }
             if (o.Kind == "move") { if(g.CombatVersion==1){var hull=TypedCombat.Index(o.Hull);typedDelta[s.Id,t,hull]-=o.Ships;typedDelta[o.Target,t,hull]+=o.Ships;}else{delta[s.Id,t] -= o.Ships; delta[o.Target,t] += o.Ships;} if(o.Scouts>0){s.Scouts[t]-=o.Scouts;scoutTransports.Add((t,o.Target,o.Scouts));} Reveal(g,t,o.Target); c.Reports.Insert(0,$"Fleet of {o.Ships} {(g.CombatVersion==1?TypedCombat.Name(TypedCombat.Index(o.Hull)):"ships")} reached {g.Stars[o.Target].Name}."); }
         }
-        foreach (var s in g.Stars) for(var t=0;t<2;t++) s.Ships[t] += delta[s.Id,t];
-        if(g.CombatVersion==1)foreach(var s in g.Stars){for(var t=0;t<2;t++)for(var h=0;h<5;h++)s.Fleets![t][h]+=typedDelta[s.Id,t,h];TypedCombat.Sync(s);}
+        foreach (var s in g.Stars) for(var t=0;t<n;t++) s.Ships[t] += delta[s.Id,t];
+        if(g.CombatVersion==1)foreach(var s in g.Stars){for(var t=0;t<n;t++)for(var h=0;h<5;h++)s.Fleets![t][h]+=typedDelta[s.Id,t,h];TypedCombat.Sync(s);}
         // All reconnaissance samples the same arrival snapshot, before combat.
         Recon.Resolve(g,now);
         var scoutLandingSites = new HashSet<(int Team, int Star)>();
         foreach (var s in g.Stars)
         {
-            if(g.CombatVersion==1)TypedCombat.Resolve(g,s,now);
-            else if(g.EconomyVersion==1 || g.GeneratedMap?.RealCatalogVersion is not null) Economy.Combat(g,s);
-            else if(s.Ships[0]>0 && s.Ships[1]>0)
+            Battles.Resolve(g,s,now);
+            for(var t=0;t<n;t++) if(s.Ships[t]>0)
             {
-                var lost = Math.Min(s.Ships[0],s.Ships[1]); s.Ships[0]-=lost; s.Ships[1]-=lost;
-                for(var t=0;t<2;t++) g.Clans[t].Reports.Insert(0,$"Battle at {s.Name}: lost {lost} ships; {s.Ships[t]} remain.");
-            }
-            for(var t=0;t<2;t++) if(s.Ships[t]>0)
-            {
-                if(s.Owner != null && s.Owner != t) { var defender=s.Owner.Value; s.Owner=null; s.Collectors=0; s.Defense=0; s.Scouts[defender]=0; s.Mines=0; s.SettlementSize=0; s.Inhabitants=0; s.Stockpile=null; s.Gate=false; s.Freighters=[0,0]; g.Clans[defender].Reports.Insert(0,$"Colony at {s.Name} was lost; grounded scouts destroyed."); }
+                // A fleet takes a colony only from a clan it is not allied with.
+                if(s.Owner != null && Alliances.Hostile(g,s.Owner.Value,t)) { var defender=s.Owner.Value; s.Owner=null; s.Collectors=0; s.Defense=0; s.Scouts[defender]=0; s.Mines=0; s.SettlementSize=0; s.Inhabitants=0; s.Stockpile=null; s.Gate=false; s.Freighters=new int[n]; g.Clans[defender].Reports.Insert(0,$"Colony at {s.Name} was lost; grounded scouts destroyed."); }
                 if(s.Owner == null && (g.CombatVersion==1?s.Fleets![t][0]:s.Ships[t])>=2) { if(g.CombatVersion==1){s.Fleets![t][0]-=2;TypedCombat.Sync(s);}else s.Ships[t]-=2; s.Owner=t; if(Population.Enabled(g)) s.Inhabitants=Population.Founding; if(g.GeneratedMap?.RealCatalogVersion is not null) s.SettlementSize=1; if(g.LogisticsVersion==1) s.Stockpile=new int[Materials.Count]; g.Clans[t].Reports.Insert(0,$"Founded colony at {s.Name}; two {(g.CombatVersion==1?"interceptors":"ships")} converted to habitats."); }
                 if (s.Owner == t) scoutLandingSites.Add((t,s.Id));
                 Reveal(g,t,s.Id);
@@ -447,7 +462,7 @@ public static class Rules
             g.Clans[refit.Team].Reports.Insert(0,$"{TypedCombat.Name(refit.Hull)} fleet package changed to {refit.Package}; active next turn.");
         }
         var winners = new List<int>(); var rule = Victory(g);
-        for(var t=0;t<2;t++)
+        for(var t=0;t<n;t++)
         {
             var c=g.Clans[t]; var owned=g.Stars.Where(s=>s.Owner==t).ToList();
             var income=owned.Sum(s=>Economy.Income(g,s)); c.Credits+=income;
@@ -478,13 +493,17 @@ public static class Rules
         if(winners.Count==0 && rule.TurnLimit>0 && g.Turn>=rule.TurnLimit)
         {
             var strength=g.Clans.Select((_,t)=>(Colonies:g.Stars.Count(s=>s.Owner==t),Collectors:g.Stars.Where(s=>s.Owner==t).Sum(s=>s.Collectors))).ToArray();
-            var order=strength[0].CompareTo(strength[1]);
-            if(order>=0) winners.Add(0);
-            if(order<=0) winners.Add(1);
+            var best=strength.Max();
+            for(var t=0;t<n;t++) if(strength[t].CompareTo(best)==0) winners.Add(t);
             foreach(var clan in g.Clans) clan.Reports.Insert(0,$"The season reached its {rule.TurnLimit}-turn limit and was decided on colonies, then collectors.");
         }
-        // Simultaneous victory is a shared victory, represented by team 2.
-        if(winners.Count>0) { g.Winner=winners.Count==2 ? 2 : winners[0]; g.Ended=now; }
-        g.Turn++; g.Deadline=now.AddDays(1); return true;
+        if(winners.Count>0)
+        {
+            // A clan's allies at this moment share its win.
+            winners=winners.Concat(winners.SelectMany(t=>Alliances.Allies(g,t))).Distinct().Order().ToList();
+            // A shared victory is represented by the number of clans (2 in a two-clan campaign, as it always was); Winners names them.
+            g.Winner=winners.Count==1 ? winners[0] : n; g.Winners=winners; g.Ended=now;
+        }
+        g.Turn++; g.Deadline=now.AddDays(1); Alliances.Expire(g); return true;
     }
 }

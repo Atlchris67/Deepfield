@@ -16,40 +16,13 @@ public static class TypedCombat
     public static void Initialize(Game game)
     {
         if(game.CombatVersion!=0)throw new RuleException("Typed fleet initialization is one-time only.");
-        if(Enumerable.Range(0,2).Any(team=>game.Stars.Sum(s=>(long)s.Ships[team])>10000))throw new RuleException("Existing fleet exceeds typed preview capacity.");
-        foreach(var star in game.Stars)star.Fleets=[[star.Ships[0],0,0,0,0],[star.Ships[1],0,0,0,0]];
+        if(Enumerable.Range(0,game.Clans.Count).Any(team=>game.Stars.Sum(s=>(long)s.Ships[team])>10000))throw new RuleException("Existing fleet exceeds typed preview capacity.");
+        foreach(var star in game.Stars)star.Fleets=star.Ships.Select(ships=>new[]{ships,0,0,0,0}).ToArray();
         game.CombatVersion=1;
     }
-    public static void Sync(Star star){for(var team=0;team<2;team++)star.Ships[team]=star.Fleets![team].Sum();}
+    public static void Sync(Star star){for(var team=0;team<star.Fleets!.Length;team++)star.Ships[team]=star.Fleets[team].Sum();}
     public static string Describe(int[] composition)=>string.Join(", ",composition.Select((count,index)=>$"{count} {Name(index)}"));
-    public static void Resolve(Game game,Star star,DateTimeOffset at)
-    {
-        var before=star.Fleets!.Select(f=>f.ToArray()).ToArray();var owner=star.Owner;var defense=star.Defense;
-        var left=before[0].ToArray();var right=before[1].ToArray();
-        // Fixed defenses use the interceptor counter profile, but never become ships.
-        if(owner==0)left[0]+=defense;if(owner==1)right[0]+=defense;
-        if(left.Sum()==0||right.Sum()==0)return;
-        var result=CounterBattle.Resolve(new(left),new(right),
-            game.Clans[0].ShipDesigns.Select(ShipDesign.Index).ToArray(),
-            game.Clans[1].ShipDesigns.Select(ShipDesign.Index).ToArray());
-        star.Fleets=[result.Left.Counts,result.Right.Counts];
-        if(owner is int defending)
-        {
-            var loss=before[defending][0]+defense-star.Fleets[defending][0];
-            star.Defense=Math.Max(0,defense-loss);star.Fleets[defending][0]-=star.Defense;
-        }
-        Sync(star);
-        for(var team=0;team<2;team++)
-        {
-            var losses=before[team].Zip(star.Fleets[team],(initial,remaining)=>initial-remaining).ToArray();
-            game.Clans[team].Reports.Insert(0,$"Turn {game.Turn}, battle at {star.Name}: own hull losses [{Describe(losses)}]; own survivors [{Describe(star.Fleets[team])}]." +
-                (owner==team?$" Fixed-defense strength lost: {defense-star.Defense}.":""));
-            var enemy=1-team;var retained=star.Ships[team]>0||(owner==team&&star.Defense>0);
-            game.Clans[team].Intelligence.Insert(0,new($"battle:{game.Turn}:{team}:{star.Id}",star.Id,game.Turn,at,"battle contact / before combat","battle",retained,true,
-                retained,retained?owner:null,retained?Recon.Band(before[enemy].Sum()):null,retained?before[enemy].Sum():null,
-                null,null,retained&&owner==enemy?defense:null,retained?before[enemy].ToArray():null));
-        }
-    }
+    public static void Resolve(Game game,Star star,DateTimeOffset at)=>Battles.Resolve(game,star,at);
     public static int ChooseHull(View view,StarView source)
     {
         var intel=view.Intelligence?.Where(i=>i.EnemyComposition!=null&&i.EnemyPresent==true&&view.Turn-i.Turn<=3&&Rules.Linked(view,source.Id,i.Star)).OrderByDescending(i=>i.Turn).ThenBy(i=>i.Id).FirstOrDefault();

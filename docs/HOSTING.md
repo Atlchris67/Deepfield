@@ -32,10 +32,11 @@ Set these as environment variables on the host. Never commit real values.
 | `Owner__SetupKey` | For first start | A random secret of at least 24 characters. It lets one person create the owner account, once. Remove it after setup. |
 | `Proxy__TrustForwardedHeaders` | Yes, behind a proxy | `true`. The app then trusts `X-Forwarded-Proto` and `X-Forwarded-For` from the platform proxy. Only set it when the app cannot be reached except through that proxy. |
 | `Proxy__ForwardLimit` | No | Number of proxies in front of the app. Default `1`. |
-| `Auth__Mode` | No | `accounts` is the default outside Development. `keys` keeps the old shared clan keys and then needs `Teams__0__Key` / `Teams__1__Key`. |
+| `Auth__Mode` | No | `accounts` is the default outside Development. `keys` keeps the old shared clan keys and then needs `Teams__0__Key` / `Teams__1__Key` (and `Teams__2__Key` / `Teams__3__Key` for a third and fourth clan). |
 | `Auth__AttemptsPerMinute` | No | Sign-in, setup, invitation and reset attempts allowed per client address per minute. Default `20`. |
 | `Https__Require` | No | Defaults to `true` with accounts outside Development: plain HTTP is redirected to HTTPS and HSTS is sent. |
 | `Mode` | No | `simple` (default) or `advanced`: the rules of a **new** campaign. The owner can change it in the game before the first turn resolves and for each later season. See [MODES.md](MODES.md). |
+| `Clans` | No | `2` (default), `3` or `4`: the number of clans of a **new** campaign. The owner can change it for each season. See [CLANS.md](CLANS.md). |
 | `MapSeed` | No | Fixes the layout of a **new** campaign. Without it a hosted campaign gets a random layout. `0` is the original fixed layout. Later seasons always get a new random layout. |
 | `Victory__Colonies`, `Victory__Collectors`, `Victory__TurnLimit` | No | Winning condition of a **new** campaign (standard: 4, 8, and 0 for no turn limit). The owner can change it in the game before the first turn resolves and for each later season. |
 | `EmpireAi` | No | Whether the second clan of a **new** campaign starts out played by the computer (default `true`). The owner can change who plays each clan in the game at any time. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md). |

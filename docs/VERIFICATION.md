@@ -1,5 +1,32 @@
 # Verification — 2026-10-14, Piedmont
 
+## Two to four clans, and alliances (milestone 9, part 1) - 2026-11-28
+
+Branch `feature/more-clans`, from `main`. No deployment. The running playtest, its keys and its save were not touched.
+
+Owner decisions recorded in [CLANS.md](CLANS.md): two to four clans chosen per season; clans that are not allied fight; alliances need both clans, start next turn, end with a turn's notice, share peace and sight, and share a win.
+
+Run locally on Windows (.NET 10, Microsoft Edge), and by CI on the pull request:
+
+- `Deepfield.Checks`: **403 checks passed** locally without PostgreSQL (414 expected in CI with it): every earlier check unchanged, plus 44 clan and alliance checks. The earlier checks passing unchanged is the evidence that two-clan play and old saves behave as before.
+- The 44 new checks cover: 120 seeded maps for three and four clans (own homeworld each, never neighbours, repeatable; two-clan maps byte-for-byte unchanged); new seasons in both modes; four clans' orders in one turn; six many-sided battles with generic ships, one with ship types and one against fixed defenses; every alliance step (offer, hidden from the third clan, decline, withdraw, accept, start next turn, shared sight but separate credits and private figures, peace at each other's colonies, scout counts, notice, the notice turn, expiry, fighting afterwards, computer clans); solo, shared and turn-limit wins; changing the number of clans between seasons; rejected saves; and computer-played seasons with three and four clans in both modes on 6 maps each (all finished; slowest 13 turns in simple mode and 9 in advanced).
+- New `npm run test:clans` (`web/tests/clans-api.mjs`): **25 API and browser checks** with a real server and Microsoft Edge: the owner sets a season to three clans, a third player is invited, an alliance is offered and accepted in the browser, sight is shared from the next turn, the map marks the ally, notice ends it, an ally shares a win and the third clan sees a defeat naming both winners, the next season runs with four clans and then two, a clan with players cannot be dropped, and optional third and fourth clan keys work.
+- Unchanged counts: `test:seasons` 45, `test:accounts` 30, `test:smoke` 73, `test:desktop` 58, real-campaign API 14, generated-campaign API 22. `npm run lint` clean.
+
+Seat fairness, measured with computer-played simple-mode seasons on 4,000 map seeds per clan count: wins by clan were 2400 and 2373 with two clans; 1451, 1449 and 1408 with three; 1062, 1114, 1019 and 1033 with four. No clan position is favoured.
+
+Correction: the commit "rotate the odd ship's target between equally strong enemies" says the first clan won measurably fewer seasons. That came from a 1,000-season sample and did not hold on the 4,000 fresh seeds above, with or without the change. The rotation is kept because it is the fairer rule, not because it fixed a measured problem.
+
+Known imbalance: with three or four clans, homeworld position matters within a season. Over the same 4,000 four-clan seasons the homeworld with the lowest system number won 847 times against 1007 to 1200 for the others. Homeworlds are handed out at random, so no clan is favoured over many seasons, but one clan can start a season worse placed. The play-balance pass should look at this.
+
+Not done or not verified:
+
+- The play-balance pass (milestone 9, part 2) has not started. With more clans, computer-played seasons end sooner (13 turns against 18 with two clans), which that pass should look at.
+- Three- and four-clan games have not been played by people. The split-evenly battle rule and the homeworld fairness method are first settings.
+- The winning condition is the same for any number of clans. On a 24-system map with four clans, 4 colonies each uses 16 systems; the game creator may want a different condition.
+- Only Microsoft Edge on a desktop was tested. The alliances panel has not been checked with a screen reader.
+- An account whose clan is not in the current season cannot happen through the game (the server refuses to drop a clan with players), but a hand-edited account file could cause it; such a player is told their clan is not part of the season.
+
 ## Inhabitants, and tidy up for 1.0 (milestone 8) - 2026-11-27
 
 Branch `feature/tidy-1.0`, from `main`. No deployment. The running playtest, its keys and its save were not touched.

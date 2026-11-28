@@ -93,7 +93,7 @@ jobs:
           for suite in fleet-selection fleet-component intel-component draft-session draft-editing draft-edit-ui \
                        planet-component star-map-component real-sky-rotation-component material-reservations \
                        system-panel-component planet-scale real-campaign-api generated-campaign-api smoke \
-                       accounts-api seasons-api desktop; do
+                       accounts-api seasons-api clans-api desktop; do
             echo "::group::$suite"
             node tests/$suite.mjs > suite.log 2>&1 || { cat suite.log; echo "::error::$suite failed"; exit 1; }
             tail -1 suite.log
