@@ -77,7 +77,5 @@ a new season, that season uses the real-star map.
 - Nothing is earned from one season to the next; the record is enough.
 - The winning condition is configured by the game creator.
 
-## Open question for the owner
-
-- How a season that reaches its turn limit is decided. Built: more colonies, then more collectors, otherwise
-  shared. This tie-break was chosen by the developer as the simplest fair rule and has not been confirmed.
+- A season that reaches its turn limit goes to the clan with more colonies, then more collectors, otherwise it is
+  shared. Confirmed by the owner on 2026-11-27.

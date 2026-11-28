@@ -44,6 +44,9 @@ public static class GameCodec
             (game.Mode == Modes.Simple && ((game.EconomyVersion, game.CombatVersion, game.LogisticsVersion) != (0, 0, 0) ||
                 game.Clans.Any(c => c.Materials is not null || c.IndustrialFocus != 0))))
             throw new InvalidOperationException("Invalid campaign mode.");
+        if (game.PopulationVersion is not (0 or 1) || (game.PopulationVersion == 1 && game.Mode is null) ||
+            game.Stars.Any(s => s.Inhabitants < 0 || s.Inhabitants > Population.Capacity || (s.Inhabitants != 0 && (game.PopulationVersion == 0 || s.Owner is null))))
+            throw new InvalidOperationException("Invalid colony inhabitants.");
         if (game.GeneratedMap?.RealCatalogVersion is not null && (game.GeneratedMap.RealCatalogVersion != RealStarMap.Version ||
             game.GeneratedMap.RealSystems is null ||
             (game.LogisticsVersion == 0 && game.Mode != Modes.Simple && game.Clans.Any(c => c.Materials is not { Length: Materials.Count } || c.Materials.Any(n => n < 0))) ||

@@ -77,6 +77,6 @@ export function ColonizationPlanner({stars,links,team,turn,typed,draft,intellige
       {!moving&&<small>No ships available after drafted departures.</small>}{scouts===0&&<small>No scouts available after drafted orders.</small>}</>:<small>{travel==null?'Chart a route first.':'Move to an adjacent origin first.'}</small>}</td></tr>;
    })}</tbody></table>:<p>{onlyShortlisted?'No systems shortlisted.':'No other charted systems to compare.'}</p>}
   </div>
-  <p className="hint">Unknown intel does not block an otherwise valid expedition. Founding a colony still requires surviving combat and an eligible fleet. Scout preparation starts with Distant recon, the lowest-risk mission; switch to Deep for exact counts and available surveys. Habitability is simulated, advisory only, and requires a returning Deep scout in a new real-star campaign. It does not affect colony rules.</p>
+  <p className="hint">Unknown intel does not block an otherwise valid expedition. Founding a colony still requires surviving combat and an eligible fleet. Scout preparation starts with Distant recon, the lowest-risk mission; switch to Deep for exact counts and available surveys. Habitability is simulated and requires a returning Deep scout in a new real-star campaign. It never decides whether a colony can be founded. In a campaign with inhabitants, a colony grows faster, and so earns more sooner, on a more habitable world.</p>
  </dialog>;
 }

@@ -5,7 +5,7 @@ export const hulls=[{id:'interceptor',label:'Interceptor',cost:5,counters:'Torpe
  {id:'bomber',label:'Bomber',cost:12,counters:'Torpedo boats and disruptors'},
  {id:'disruptor',label:'Disruptor',cost:8,counters:'Interceptors and cruisers'}];
 export type Order={kind:string;source:number;target:number;ships:number;mission?:string;hull?:string;cargo?:number[]|null;scouts?:number;package?:string};
-export type Star={statistics?:PlanetStats;id:number;name:string;x:number;y:number;known:boolean;visible:boolean;owner:number|null;collectors:number|null;ships:number[]|null;scouts:number[]|null;defense:number|null;fleets:number[][]|null;mines?:number|null;settlementSize?:number|null;homePlanetId?:number|null;materialYield?:number[]|null;stockpile?:number[]|null;accessibleMaterials?:number[]|null;gate?:boolean|null;freighters?:number|null};
+export type Star={statistics?:PlanetStats;id:number;name:string;x:number;y:number;known:boolean;visible:boolean;owner:number|null;collectors:number|null;ships:number[]|null;scouts:number[]|null;defense:number|null;fleets:number[][]|null;mines?:number|null;settlementSize?:number|null;inhabitants?:number|null;inhabitantGrowth?:number|null;colonyIncome?:number|null;habitability?:number|null;homePlanetId?:number|null;materialYield?:number[]|null;stockpile?:number[]|null;accessibleMaterials?:number[]|null;gate?:boolean|null;freighters?:number|null};
 export type StarLink={from:number;to:number};
 export const linked=(a:number,b:number,links?:StarLink[]|null)=>links?links.some(link=>link.from===Math.min(a,b)&&link.to===Math.max(a,b)):a!==b&&(Math.abs(a-b)===1||Math.abs(a-b)===6)&&!(Math.min(a,b)===5&&Math.max(a,b)===6);
 export function available(star:Star,team:number,typed:boolean,index:number,draft:Order[]){

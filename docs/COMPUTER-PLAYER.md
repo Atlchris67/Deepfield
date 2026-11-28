@@ -31,6 +31,8 @@ person's. It has no hidden information and cannot break a rule.
 In campaigns with a mode (simple or advanced) it:
 
 - gathers four ships at a colony that borders a system it does not hold, then sends all but one to that system;
+- between otherwise equal targets, prefers the one its own deep scouts reported as more habitable, because
+  inhabitants grow faster there; a system it has no report for counts as average, and it never sees a hidden score;
 - prefers empty systems, and puts a system where it met the other clan in the last three turns at the end of its
   list. If only such a system is left it gathers at least eight ships, or twice what it saw there, before attacking;
 - forwards ships from colonies with no such border toward the nearest colony that has one;

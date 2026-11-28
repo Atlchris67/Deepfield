@@ -22,7 +22,7 @@ public static class ModeChecks
             "Simple mode is played on the real-star map with the basic economy, generic ships and no logistics");
         Check(simple.Clans.All(c => c.Materials is null && c.IndustrialFocus == 0) && view.Materials is null && view.Stars.All(s => s.MaterialYield is null && s.Stockpile is null && s.Fleets is null) && simple.Stars.All(s => s.Mines == 0 && s.Stockpile is null),
             "Simple mode has no material stock, mines, stockpiles or typed fleets");
-        Check(view.NextIncome == 15 && view.Credits == 60 && Home(simple, 0).Ships[0] == 8 && Home(simple, 0).Environment is not null, "Simple mode starts with flat colony income, eight ships and a habitability profile");
+        Check(view.NextIncome == 15 && view.Credits == 60 && Home(simple, 0).Ships[0] == 8 && Home(simple, 0).Environment is not null, "Simple mode starts with 15 credits of colony income, eight ships and a habitability profile");
         var home = Home(simple, 0).Id; var target = Neighbour(simple, 0);
         Check(new[] { new Order("defense", home), new Order("mine", home), new Order("settlement", home), new Order("gate", home), new Order("freighter", home, Ships: 1), new Order("build", home, Ships: 1, Hull: "interceptor"), new Order("refit", home, Hull: "interceptor", Package: ShipDesign.Packages[1]) }
                 .All(order => Refused(() => Rules.Submit(simple, 0, Orders(simple, order), now))),
@@ -30,9 +30,9 @@ public static class ModeChecks
         Rules.Submit(simple, 0, Orders(simple, new Order("build", home, Ships: 4), new Order("collector", home), new Order("scoutbuild", home, Ships: 2), new Order("move", home, target, 3)), now);
         Rules.Resolve(simple, simple.Deadline);
         Console.WriteLine($"INFO simple turn: owner {simple.Stars[target].Owner}, credits {simple.Clans[0].Credits}, ships {simple.Stars[home].Ships[0]}, collectors {simple.Stars[home].Collectors}, scouts {simple.Stars[home].Scouts[0]}");
-        Check(simple.Stars[target].Owner == 0 && simple.Clans[0].Credits == 60 - 20 - 30 - 6 + 2 * 15 && simple.Stars[home].Ships[0] == 9 && simple.Stars[home].Collectors == 2 && simple.Stars[home].Scouts[0] == 2,
+        Check(simple.Stars[target].Owner == 0 && simple.Clans[0].Credits == 60 - 20 - 30 - 6 + 15 + Population.Income(Population.Founding) && simple.Stars[home].Ships[0] == 9 && simple.Stars[home].Collectors == 2 && simple.Stars[home].Scouts[0] == 2,
             "Simple mode builds ships, collectors and scouts for credits alone, and two surviving ships found a colony");
-        Check(Rules.Observe(simple, 0).NextIncome == 30 && Copy(simple).Mode == "simple", "Simple mode income is 15 credits per colony, and the mode is saved with the campaign");
+        Check(Rules.Observe(simple, 0).NextIncome == 15 + Population.Income(simple.Stars[target].Inhabitants) && Copy(simple).Mode == "simple", "Simple mode income is 15 credits for the full homeworld plus the new colony's share, and the mode is saved with the campaign");
         var robots = Modes.Create(RealStarMap.Generate(22), now, true, Modes.Simple); robots.Clans[0].Ai = true;
         for (var i = 0; i < 25 && robots.Winner is null; i++) Rules.Resolve(robots, robots.Deadline);
         Check(robots.Turn > 5 && robots.Stars.Count(s => s.Owner is not null) > 2 && !Invalid(robots), "Computer-played clans can play simple mode and leave a valid save");

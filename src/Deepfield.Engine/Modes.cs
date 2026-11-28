@@ -3,10 +3,10 @@ namespace Deepfield.Engine;
 /// <summary>
 /// The two rule sets a game creator chooses between. They replace choosing the economy, combat, logistics and
 /// materials versions one by one. A campaign with no mode is an older campaign that keeps the versions it was saved with.
-/// <para>Simple: generic ships, equal-loss combat, flat colony income, credits only.</para>
+/// <para>Simple: generic ships, equal-loss combat, colony income only, credits only.</para>
 /// <para>Advanced: ship types and design, typed combat, tapered collector income, fixed defenses, materials and mines,
 /// local stockpiles with freighters and gates, and clan industrial focus.</para>
-/// Both modes use the real-star map, scouting and habitability reports.
+/// Both modes use the real-star map, scouting, habitability reports and inhabitants (see <see cref="Population"/>).
 /// </summary>
 public static class Modes
 {
@@ -30,6 +30,9 @@ public static class Modes
             ? Rules.CreateFromMap(map, now, ai, economyVersion: 1, combatVersion: 1, logisticsVersion: 1, industrialFocus)
             : Rules.CreateFromMap(map, now, ai, economyVersion: 0, combatVersion: 0, logisticsVersion: 0);
         game.Mode = mode;
+        // Inhabitants: both modes. Homeworlds start full, so the opening income is the same as before.
+        game.PopulationVersion = 1;
+        foreach (var star in game.Stars.Where(star => star.Owner is not null)) star.Inhabitants = Population.Capacity;
         if (mode == Simple)
         {
             // Credits only: no material stock, and nothing on the map that only matters to material production.

@@ -48,6 +48,8 @@ public class Star
     public ColonyEnvironment? Environment { get; set; }
     public bool Gate { get; set; }
     public int[] Freighters { get; set; } = [0, 0];
+    // Zero in campaigns from before inhabitants (PopulationVersion 0).
+    public int Inhabitants { get; set; }
 }
 public class Game
 {
@@ -75,10 +77,14 @@ public class Game
     public VictoryRule? Victory { get; set; }
     // Null is a campaign from before modes: it keeps the rule versions above exactly as saved.
     public string? Mode { get; set; }
+    // Zero is a campaign from before inhabitants: flat colony income. One: see Population.
+    public int PopulationVersion { get; set; }
 }
 public record StarView(int Id, string Name, int X, int Y, bool Known, bool Visible, int? Owner, int? Collectors, int[]? Ships, int[]? Scouts = null, int? Defense = null, int[][]? Fleets = null, PlanetStats? Statistics = null,
     int? Mines = null, int? SettlementSize = null, int? HomePlanetId = null, int[]? MaterialYield = null,
-    int[]? Stockpile = null, bool? Gate = null, int? Freighters = null, int[]? AccessibleMaterials = null);
+    int[]? Stockpile = null, bool? Gate = null, int? Freighters = null, int[]? AccessibleMaterials = null,
+    // Inhabitants of a colony the clan can see. Growth, income and the habitability score only for the clan's own colonies.
+    int? Inhabitants = null, int? InhabitantGrowth = null, int? ColonyIncome = null, int? Habitability = null);
 public record View(int Turn, DateTimeOffset Deadline, int? Winner, int Team, string Name, int Credits, int Revision,
     List<Order> Orders, List<string> Reports, List<Message> Messages, List<StarView> Stars, int Energy, int Goal = 8,
     List<Intelligence>? Intelligence = null, ReconRates? ReconRates = null, int EconomyVersion = 0, int NextIncome = 0, int CombatVersion = 0,
@@ -172,7 +178,11 @@ public static class Rules
                     Freighters: s.Owner == team ? s.Freighters[team] : null,
                     AccessibleMaterials: s.Owner == team && access is not null
                         ? Enumerable.Range(0, Materials.Count).Select(i => access[(team, s.Id)].Sum(source => source.Stockpile![i])).ToArray()
-                        : null);
+                        : null,
+                    Inhabitants: visible && s.Owner is not null && Population.Enabled(g) ? s.Inhabitants : null,
+                    InhabitantGrowth: s.Owner == team && Population.Enabled(g) ? Population.Growth(s) : null,
+                    ColonyIncome: s.Owner == team && Population.Enabled(g) ? Economy.Income(g, s) : null,
+                    Habitability: s.Owner == team && Population.Enabled(g) && s.Environment is not null ? Engine.Habitability.Score(s.Environment) : null);
                 return star with { Statistics = PlanetStatistics.Project(star, c.Intelligence, team, g.Turn, g.EconomyVersion) }; }).ToList(),
             g.Stars.Where(s => s.Owner == team).Sum(s => s.Collectors), Intelligence: [..c.Intelligence], ReconRates: g.ReconRates,
             EconomyVersion: g.EconomyVersion, NextIncome: g.Stars.Where(s=>s.Owner==team).Sum(s=>Economy.Income(g,s)), CombatVersion: g.CombatVersion,
@@ -404,8 +414,8 @@ public static class Rules
             }
             for(var t=0;t<2;t++) if(s.Ships[t]>0)
             {
-                if(s.Owner != null && s.Owner != t) { var defender=s.Owner.Value; s.Owner=null; s.Collectors=0; s.Defense=0; s.Scouts[defender]=0; s.Mines=0; s.SettlementSize=0; s.Stockpile=null; s.Gate=false; s.Freighters=[0,0]; g.Clans[defender].Reports.Insert(0,$"Colony at {s.Name} was lost; grounded scouts destroyed."); }
-                if(s.Owner == null && (g.CombatVersion==1?s.Fleets![t][0]:s.Ships[t])>=2) { if(g.CombatVersion==1){s.Fleets![t][0]-=2;TypedCombat.Sync(s);}else s.Ships[t]-=2; s.Owner=t; if(g.GeneratedMap?.RealCatalogVersion is not null) s.SettlementSize=1; if(g.LogisticsVersion==1) s.Stockpile=new int[Materials.Count]; g.Clans[t].Reports.Insert(0,$"Founded colony at {s.Name}; two {(g.CombatVersion==1?"interceptors":"ships")} converted to habitats."); }
+                if(s.Owner != null && s.Owner != t) { var defender=s.Owner.Value; s.Owner=null; s.Collectors=0; s.Defense=0; s.Scouts[defender]=0; s.Mines=0; s.SettlementSize=0; s.Inhabitants=0; s.Stockpile=null; s.Gate=false; s.Freighters=[0,0]; g.Clans[defender].Reports.Insert(0,$"Colony at {s.Name} was lost; grounded scouts destroyed."); }
+                if(s.Owner == null && (g.CombatVersion==1?s.Fleets![t][0]:s.Ships[t])>=2) { if(g.CombatVersion==1){s.Fleets![t][0]-=2;TypedCombat.Sync(s);}else s.Ships[t]-=2; s.Owner=t; if(Population.Enabled(g)) s.Inhabitants=Population.Founding; if(g.GeneratedMap?.RealCatalogVersion is not null) s.SettlementSize=1; if(g.LogisticsVersion==1) s.Stockpile=new int[Materials.Count]; g.Clans[t].Reports.Insert(0,$"Founded colony at {s.Name}; two {(g.CombatVersion==1?"interceptors":"ships")} converted to habitats."); }
                 if (s.Owner == t) scoutLandingSites.Add((t,s.Id));
                 Reveal(g,t,s.Id);
             }
@@ -441,6 +451,8 @@ public static class Rules
         {
             var c=g.Clans[t]; var owned=g.Stars.Where(s=>s.Owner==t).ToList();
             var income=owned.Sum(s=>Economy.Income(g,s)); c.Credits+=income;
+            // Income is paid on this turn's inhabitants; then they grow.
+            if (Population.Enabled(g)) foreach (var star in owned) Population.Grow(star);
             if (c.Materials is not null && g.GeneratedMap is { RealCatalogVersion: not null })
             {
                 foreach (var star in owned)

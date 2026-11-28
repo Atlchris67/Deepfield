@@ -16,7 +16,8 @@ public static class PlanetStatistics
         if (star.Visible)
             return new("current", turn, null, "campaign snapshot", null, true, star.Owner, null, null,
                 star.Collectors, star.Defense,
-                star.Owner == team && star.Collectors.HasValue ? 15 + (economyVersion == 1 ? Economy.CollectorIncome(star.Collectors.Value) : 0) : null,
+                // With inhabitants the view already carries the colony's income; older campaigns pay a flat 15.
+                star.Owner == team && star.Collectors.HasValue ? star.ColonyIncome ?? 15 + (economyVersion == 1 ? Economy.CollectorIncome(star.Collectors.Value) : 0) : null,
                 Enumerable.Range(0, 2).Select(t => Fleet(t, star.Ships?[t], star.Scouts?[t], star.Fleets?[t])).ToList());
 
         // Use one snapshot, never combine observations from different phases into apparent current state.

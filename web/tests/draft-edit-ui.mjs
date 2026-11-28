@@ -68,7 +68,7 @@ try{
  check(await outerRow.getByText('No factor breakdown recorded',{exact:true}).isVisible()&&
        await outerRow.locator('summary').count()===0&&await unknownRow.locator('summary').count()===0,
        'Incomplete, failed, and non-Deep surveys cannot donate a factor breakdown');
- check(await planner.getByText(/Habitability is simulated, advisory only/).isVisible(),'Habitability is labeled as a simulation, not an eligibility rule');
+ check(await planner.getByText(/Habitability is simulated and requires a returning Deep scout/).isVisible(),'Habitability is labeled as a simulation, not an eligibility rule');
  await planner.getByLabel('Sort candidates').selectOption('habitability');
  const ranking=(await planner.locator('tbody th').allTextContents()).map(name=>name.replace(/Shortlist$/,''));
  check(ranking[0]==='Surveyed world'&&ranking[1]==='Outer world','Suitability sorting ranks measured values first, including zero');
