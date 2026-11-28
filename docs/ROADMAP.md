@@ -6,13 +6,31 @@ The goals, owner decisions, Stars! clean-room rule and definition of version 1.0
 
 | # | Milestone | Status |
 | --- | --- | --- |
-| 1 | Protect the work and write down the plan | In review: draft pull request from `feature/habitability-colonization` |
-| 2 | Hosting and accounts: cloud hosting with HTTPS and PostgreSQL, personal accounts | Prepared, in review: draft pull request from `feature/hosting-accounts`. Accounts, invitations, HTTPS handling and PostgreSQL storage are built and verified locally against a disposable PostgreSQL server. **Not deployed, and going live is postponed by the owner** (2026-11-26); the provider is chosen when hosting resumes, and the hosted server will start a fresh campaign. See [HOSTING.md](HOSTING.md) |
-| 3 | Seasons and replayability: varied homeworlds and links, victory screen, new season | In review: draft pull request from `feature/seasons`. Seeded maps with varied links and evenly matched homeworlds, a victory screen with final standings, a season record, and an owner control that starts the next season. See [SEASONS.md](SEASONS.md). The game creator configures the winning condition (colonies, collectors, optional turn limit). One owner question is open: how a season at its turn limit is decided |
-| 4 | Simple and advanced modes replacing the overlapping rule versions | In review: draft pull request from `feature/modes`. One mode choice (simple or advanced) made by the game creator for each season; both modes use the real-star map; older campaigns keep their saved rules. See [MODES.md](MODES.md). Open: whether habitability should affect colonies |
-| 5 | Fill-in AI for missing players | In review: draft pull request from `feature/fill-in-ai`. The owner sets each clan to its players or the computer in the season dialog; the computer never steps in by itself (owner decision). A new computer player for simple and advanced mode finishes a season on every test map. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md) |
-| 6 | Desktop polish and recorded verification | In review: draft pull request from `feature/desktop-polish`. The command deck and its dialogs were audited at 1280, 1440 and 1920 pixels wide in both modes; the defects found are fixed and a new suite, `npm run test:desktop`, holds them fixed. Results are in [VERIFICATION.md](VERIFICATION.md) |
-| 7 | Everything merged to `main` with CI | CI exists (`.github/workflows/ci.yml`) and passes on the full stack: build, every recorded check, and a build and start of the container image. `main` is fast-forwarded to the stack once CI is green on its tip (owner decision 2026-11-27). Pull requests #12, #14 and #15 are not included: see [VERIFICATION.md](VERIFICATION.md) |
+| 1 | Protect the work and write down the plan | Done, on `main` |
+| 2 | Hosting and accounts: cloud hosting with HTTPS and PostgreSQL, personal accounts | **Built, not live.** Accounts, invitations, HTTPS handling and PostgreSQL storage are on `main` and checked by CI, which also builds and starts the container image. Going live is postponed by the owner (2026-11-26). See [HOSTING.md](HOSTING.md) |
+| 3 | Seasons and replayability: varied homeworlds and links, victory screen, new season | Done, on `main`. See [SEASONS.md](SEASONS.md) |
+| 4 | Simple and advanced modes replacing the overlapping rule versions | Done, on `main`. See [MODES.md](MODES.md) |
+| 5 | Fill-in AI for missing players | Done, on `main`. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md) |
+| 6 | Desktop polish and recorded verification | Done, on `main`. Results are in [VERIFICATION.md](VERIFICATION.md) |
+| 7 | Everything merged to `main` with CI | Done. `main` holds all the work and is the default branch; CI (`.github/workflows/ci.yml`) runs the build, every recorded check and the container image on each pull request and each push to `main`. Pull requests #12, #14 and #15 were not included: see [VERIFICATION.md](VERIFICATION.md) |
+| 8 | Tidy up for 1.0 | In review: pull request from `feature/tidy-1.0`. Inhabitants added in both modes, the turn-limit tie-break confirmed, and this page brought up to date |
+
+## What is left before version 1.0
+
+One thing: **going live** (the second half of milestone 2). It waits for the owner. When hosting resumes:
+
+1. Choose the cloud provider.
+2. Run the container image there with a managed PostgreSQL and HTTPS.
+3. Rehearse backup and restore.
+4. Get an independent security review before strangers are invited.
+
+Known gaps that do not block 1.0, each recorded in [VERIFICATION.md](VERIFICATION.md):
+
+- Only Microsoft Edge on a desktop is tested. Other browsers, phones, tablets, display scaling and screen readers are not.
+- No self-service password reset, email verification or two-factor sign-in.
+- The inhabitant numbers (20 at founding, 3 to 15 a turn, 5 to 15 credits) are a first setting and have not been played by people yet.
+
+After 1.0, from [VISION.md](VISION.md): more than two clans, phones and tablets, and commercial work once the family playtest is fun.
 
 The sections below are the earlier increment notes, kept as history.
 

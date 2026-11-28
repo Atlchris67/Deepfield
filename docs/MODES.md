@@ -9,7 +9,8 @@ the economy, combat, logistics and materials rule versions one by one. The owner
 | Map, fog, seasons, winning condition | Same | Same |
 | Scouting (distant, close, deep) | Same | Same |
 | Habitability reports | Shown | Shown |
-| Economy | 15 credits per colony | 15 per colony plus collector income of 3, 2, 1 for a colony's first three collectors |
+| Inhabitants | Same | Same |
+| Economy | 5 to 15 credits per colony, by its inhabitants | The same, plus collector income of 3, 2, 1 for a colony's first three collectors |
 | Fixed defenses | Not available | Available |
 | Ships | One generic ship, 5 credits | Ship types and ship design |
 | Combat | Equal losses; survivors take the colony | Typed-fleet combat |
@@ -19,9 +20,20 @@ the economy, combat, logistics and materials rule versions one by one. The owner
 
 Both modes are played on the real-star map. New campaigns are no longer created on the original fictional map.
 
-**Habitability is information only, in both modes.** A deep scout reports it and the colonization planner shows
-it, but no rule reads it: a colony on a harsh world performs the same as one on a mild world. Giving it an effect
-would be a new rule and is not part of this work.
+**Inhabitants, in both modes** (owner decision, 2026-11-27). Every colony has between 0 and 100 inhabitants.
+
+- A homeworld starts full. A colony is founded with 20.
+- Each turn a colony gains 3 inhabitants on the harshest world and 15 on the kindest: 3 plus one for every 8 points
+  of habitability. Habitability changes nothing else. It never decides whether a colony can be founded.
+- A colony earns 5 credits plus 1 for every 10 inhabitants: 7 when founded, 15 when full. A full colony earns what
+  every colony used to, so the opening is unchanged and a new colony takes 6 to 27 turns to reach full income.
+- A colony that falls loses its inhabitants. The clan that takes it starts again from 20.
+- A clan sees the inhabitants of any colony it can currently see, and the growth, income and habitability score of
+  its own colonies. For a system it does not hold, habitability still comes only from a returning deep scout.
+
+Inhabitants are not settlement size. Settlement size is an advanced-mode purchase that raises material output.
+
+Campaigns saved before this rule keep a flat 15 credits per colony until their next season starts.
 
 ## Who chooses, and when
 

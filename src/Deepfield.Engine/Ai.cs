@@ -101,12 +101,17 @@ public static class Ai
     static Intelligence? Sighting(View v, int star) => v.Intelligence?.Where(i => i.Star == star && i.EnemyPresent == true && v.Turn - i.Turn <= Memory)
         .OrderByDescending(i => i.Turn).ThenByDescending(i => i.EnemyShips ?? 0).FirstOrDefault();
 
-    // Where a colony's ships should go: an adjacent system the clan does not hold (empty ones first, recently defended ones last), otherwise one
+    // With inhabitants, a kinder world grows faster, so between otherwise equal targets the computer prefers the one its own
+    // deep scouts reported as more habitable. A system it has no report for counts as average. It never reads the hidden score.
+    static int Habitable(View v, int star) => v.Stars.All(s => s.Inhabitants is null) ? 0
+        : v.Intelligence?.Where(i => i.Star == star && i.HabitabilityScore is not null).OrderByDescending(i => i.Turn).FirstOrDefault()?.HabitabilityScore ?? 50;
+
+    // Where a colony's ships should go: an adjacent system the clan does not hold (empty ones first, recently defended ones last, more habitable ones before less), otherwise one
     // step along the shortest route through the clan's own colonies to a colony that has such a neighbour.
     static (StarView? Target, bool Relay) Destination(View v, StarView from, List<StarView> mine)
     {
         StarView? Frontier(StarView s) => v.Stars.Where(t => t.Known && t.Owner != v.Team && Rules.Linked(v, s.Id, t.Id))
-            .OrderBy(t => t.Visible && t.Owner is null ? 0 : Sighting(v, t.Id) is null ? 1 : 2).ThenBy(t => t.Id).FirstOrDefault();
+            .OrderBy(t => t.Visible && t.Owner is null ? 0 : Sighting(v, t.Id) is null ? 1 : 2).ThenByDescending(t => Habitable(v, t.Id)).ThenBy(t => t.Id).FirstOrDefault();
         if (Frontier(from) is { } direct) return (direct, false);
         var firstStep = new Dictionary<int, StarView>(); var queue = new Queue<StarView>();
         foreach (var next in mine.Where(s => Rules.Linked(v, from.Id, s.Id))) { firstStep[next.Id] = next; queue.Enqueue(next); }

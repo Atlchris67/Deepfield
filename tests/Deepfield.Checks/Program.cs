@@ -22,4 +22,5 @@ await RealCampaignChecks.Run();
 await AccountChecks.Run();
 await SeasonChecks.Run();
 ModeChecks.Run();
+PopulationChecks.Run();
 AiChecks.Run();

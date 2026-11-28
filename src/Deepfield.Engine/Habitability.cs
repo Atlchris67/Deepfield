@@ -26,7 +26,7 @@ public static class Habitability
     private static int Stress(byte value, int maximum) => value * (maximum + 1) / 256;
 
     // 50% weight on the most severe factor, 50% on the mean of all three.
-    // Advisory only: no colony, turn-resolution, or economy rule reads this score.
+    // In a campaign with inhabitants this score sets how fast a colony grows (Population.Growth). In older campaigns nothing reads it.
     public static int Score(ColonyEnvironment environment)
     {
         var worst = Math.Max(environment.ThermalStress, Math.Max(environment.GravityStress, environment.RadiationStress));
