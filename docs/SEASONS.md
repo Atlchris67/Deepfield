@@ -44,7 +44,7 @@ ships), how many turns it took and the date. Closing it leaves the final map on 
 
 | Carries over | Starts fresh |
 | --- | --- |
-| The two clans, their names and any AI seat | The map: links and homeworlds |
+| The clans, their names and any AI seat (the game creator can change the number of clans: see [CLANS.md](CLANS.md)) | The map: links and homeworlds |
 | Each clan's private channel | Treasury, materials, colonies, fleets |
 | The record of past seasons (last 50) | Orders, reports, intelligence, ship packages |
 | The campaign's rule choices (economy, combat, logistics) | Turn counter and deadline |

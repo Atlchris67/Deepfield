@@ -16,6 +16,9 @@ public sealed class AccountAccess(IAccountStore store, string? setupKey, string[
     // The __Host- prefix makes browsers refuse the cookie unless it is Secure, host-only and path "/".
     string CookieName => development ? "deepfield_session" : "__Host-deepfield_session";
     public IAccountStore Store => store;
+    // The clans change when the game creator starts a season with a different number of them.
+    public void SetClans(string[] names) => clanNames = names;
+    string ClanName(int clan) => clan < clanNames.Length ? clanNames[clan] : "No clan this season";
 
     string? Token(HttpContext c) => c.Request.Cookies[CookieName];
     void SignIn(HttpContext c, string token) => c.Response.Cookies.Append(CookieName, token, new CookieOptions
@@ -24,7 +27,7 @@ public sealed class AccountAccess(IAccountStore store, string? setupKey, string[
         Expires = DateTimeOffset.UtcNow + Accounts.SessionLifetime
     });
     void SignOut(HttpContext c) => c.Response.Cookies.Delete(CookieName, new CookieOptions { Secure = !development || c.Request.IsHttps, SameSite = SameSiteMode.Strict, Path = "/" });
-    object Describe(Account a) => new { a.Id, a.Email, a.DisplayName, a.Clan, clanName = clanNames[a.Clan], a.Owner };
+    object Describe(Account a) => new { a.Id, a.Email, a.DisplayName, a.Clan, clanName = ClanName(a.Clan), a.Owner };
     static Account Current(HttpContext c) => (Account)c.Items["account"]!;
 
     // Returns false when the request has been answered and must not continue.
@@ -71,7 +74,7 @@ public sealed class AccountAccess(IAccountStore store, string? setupKey, string[
         {
             var invitation = await store.Execute(book => Accounts.OpenInvitation(book, body.Token, now()), false);
             return invitation is null ? Results.Json(new { error = "This invitation is not valid. Ask the campaign owner for a new one." }, statusCode: 404)
-                : Results.Ok(new { clan = invitation.Clan, clanName = clanNames[invitation.Clan], expires = invitation.Expires });
+                : Results.Ok(new { clan = invitation.Clan, clanName = ClanName(invitation.Clan), expires = invitation.Expires });
         }).RequireRateLimiting(RateLimitPolicy);
         app.MapPost("/api/public/accept", async (HttpContext c, AcceptRequest body) =>
         {

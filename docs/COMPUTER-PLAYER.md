@@ -15,7 +15,8 @@ The owner decided this on 2026-11-26:
 - While a clan is set to the computer, orders sent by its players are refused and they see a notice on their
   command deck. Orders they had already submitted are kept: if the owner hands the clan back before the turn
   resolves, those orders are the ones carried out.
-- Both clans can see who plays each clan, and both get a report when it changes.
+- Every clan can see who plays each clan, and gets a report when it changes.
+- With three or four clans the computer treats every other clan as an enemy. It never offers or accepts an alliance ([CLANS.md](CLANS.md)).
 
 A new campaign still starts with the second clan (Ember Empire) played by the computer unless the server is
 started with `EmpireAi=false`. That suits a one-person test. For a game between two groups of people, the owner

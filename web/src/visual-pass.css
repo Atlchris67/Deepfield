@@ -28,3 +28,9 @@
 .realOrbit:after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,#25556a33 0%,#12334624 42%,transparent 78%);mix-blend-mode:screen}
 @media(max-width:700px){.galaxyReadout{display:none}.galaxyLegend{left:8px;bottom:8px;gap:7px;padding:5px 7px}.galaxyLegend span{font-size:11px}.realSkyControls{right:8px;top:8px}.realSkyControls button{padding:5px 6px}.realSystemDetails{padding:12px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.spacekitGalaxyLabels .realStar.ally{color:#f0d27a}.galaxyLegend .legendAlly:before{background:#f0d27a;box-shadow:0 0 6px #f0d27a}
+.alliances{margin:0 0 16px}.allianceHelp{font-size:13px;color:#a8bdbf;margin:0 0 10px;max-width:90ch}
+.allianceList{list-style:none;margin:0;padding:0}.allianceList li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:9px 0;border-top:1px solid #263941}
+.allianceList strong{min-width:170px}.allianceList button{width:auto;margin:0}.allianceState{flex:1 1 220px;font-size:13px;color:#dce7e5}.allianceState.allied{color:#f0d27a}
+.allianceOthers{font-size:13px;color:#a8bdbf;margin:10px 0 0}

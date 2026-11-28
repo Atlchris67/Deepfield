@@ -18,6 +18,8 @@ public static class Ai
         var clan = g.Clans[team];
         if (clan.Ai == computer) return;
         clan.Ai = computer;
+        // The computer makes no alliances, so unanswered offers to and from this clan are dropped. An alliance already agreed stands.
+        if (computer) { clan.AllianceOffers.Clear(); foreach (var each in g.Clans) each.AllianceOffers.Remove(team); }
         var report = computer
             ? $"{clan.Name} is now played by the computer, as set by the campaign owner."
             : $"{clan.Name} is played by its players again, as set by the campaign owner.";
