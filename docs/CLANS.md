@@ -29,7 +29,7 @@ On the 120 test maps the closest homeworlds are two jumps apart. Two-clan maps a
 
 Clans that are not allied fight whenever their fleets are in the same system at the end of a turn.
 
-- Each clan divides its force evenly between the hostile clans present. An odd ship goes against the strongest.
+- Each clan divides its force evenly between the hostile clans present. An odd ship goes against the strongest; between equally strong clans the choice rotates from turn to turn.
 - Every pair fights at the same moment. In simple mode each pair loses equally. In advanced mode each pair is
   decided by the usual ship-type battle.
 - The rounds repeat until no two hostile clans are left in the system.

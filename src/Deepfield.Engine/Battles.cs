@@ -6,7 +6,7 @@ namespace Deepfield.Engine;
 /// The battle at one system when the fleets of clans that are not allied meet there.
 /// <para>With two sides this is exactly the battle the game has always fought.</para>
 /// <para>With three or four, everyone fights everyone who is not their ally. Each clan divides its force evenly between
-/// the hostile clans present (any odd ship goes against the strongest), every pair fights at the same moment, and the
+/// the hostile clans present (any odd ship goes against the strongest; between equals the choice rotates), every pair fights at the same moment, and the
 /// rounds repeat until no two hostile clans are left at the system. Allies never fight each other, and each ally fights
 /// its own battles: allied fleets are not pooled.</para>
 /// </summary>
@@ -33,6 +33,8 @@ public static class Battles
     static void Untyped(Game g, Star s, bool defenses)
     {
         var n = g.Clans.Count;
+        // Between equally strong enemies the odd ship's target rotates by turn and system, so no clan is always picked first.
+        var rotate = g.Turn + s.Id;
         int Strength(int t) => s.Ships[t] + (s.Owner == t ? s.Defense : 0);
         var shipLoss = new int[n]; var defenseLoss = new int[n]; var fought = new bool[n];
         while (true)
@@ -43,7 +45,7 @@ public static class Battles
             var commit = new int[n, n];
             foreach (var t in present)
             {
-                var enemies = present.Where(e => Alliances.Hostile(g, t, e)).OrderByDescending(Strength).ThenBy(e => e).ToList();
+                var enemies = present.Where(e => Alliances.Hostile(g, t, e)).OrderByDescending(Strength).ThenBy(e => (e + rotate) % n).ToList();
                 if (enemies.Count == 0) continue;
                 var shares = Split(Strength(t), enemies.Count);
                 for (var i = 0; i < enemies.Count; i++) commit[t, enemies[i]] = shares[i];
@@ -70,6 +72,8 @@ public static class Battles
     static void Typed(Game g, Star s, DateTimeOffset at)
     {
         var n = g.Clans.Count;
+        // Between equally strong enemies the odd ship's target rotates by turn and system, so no clan is always picked first.
+        var rotate = g.Turn + s.Id;
         var before = s.Fleets!.Select(f => f.ToArray()).ToArray(); var owner = s.Owner; var defense = s.Defense;
         int Strength(int t) => s.Fleets![t].Sum() + (s.Owner == t ? s.Defense : 0);
         var packages = g.Clans.Select(c => c.ShipDesigns.Select(ShipDesign.Index).ToArray()).ToArray();
@@ -87,7 +91,7 @@ public static class Battles
             var engaged = new List<int>();
             foreach (var t in present)
             {
-                var enemies = present.Where(e => Alliances.Hostile(g, t, e)).OrderByDescending(Strength).ThenBy(e => e).ToList();
+                var enemies = present.Where(e => Alliances.Hostile(g, t, e)).OrderByDescending(Strength).ThenBy(e => (e + rotate) % n).ToList();
                 if (enemies.Count == 0) continue;
                 engaged.Add(t);
                 var force = Force(t);
