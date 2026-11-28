@@ -10,8 +10,9 @@ public static class RealStarMap
     /// Seed 0 is the original fixed layout that existing saves were created from and must keep reproducing.
     /// Any other seed gives a different, repeatable set of links and a different pair of homeworlds.
     /// </summary>
-    public static GeneratedStarMap Generate(int seed = 0)
+    public static GeneratedStarMap Generate(int seed = 0, int players = 2)
     {
+        if (players is < 2 or > Rules.MaximumClans) throw new RuleException($"A season has between 2 and {Rules.MaximumClans} clans.");
         using var stream = typeof(RealStarMap).Assembly.GetManifestResourceStream("Deepfield.Engine.realSystems.json")
             ?? throw new InvalidOperationException("Real star catalog is missing.");
         using var document = JsonDocument.Parse(stream);
@@ -60,7 +61,8 @@ public static class RealStarMap
             foreach (var other in systems.Where(s => s.Id != system.Id).OrderBy(s => Distance(system.Id, s.Id)).ThenBy(s => s.Id).Take(2))
                 Add(system.Id, other.Id);
         HomeworldAssignment[] homes;
-        if (seed == 0)
+        if (players > 2) homes = FairHomes(seed, systems.Length, links, players);
+        else if (seed == 0)
         {
             var second = systems.Where(s => s.Id != 0).OrderByDescending(s => Distance(0, s.Id)).ThenBy(s => s.Id).First().Id;
             homes = [new HomeworldAssignment(0, 0, 0), new HomeworldAssignment(1, second, 0)];
@@ -70,7 +72,7 @@ public static class RealStarMap
             var (first, other) = FairHomes(seed, systems.Length, links);
             homes = [new HomeworldAssignment(0, first, 0), new HomeworldAssignment(1, other, 0)];
         }
-        var settings = new StarMapSettings(systems.Length, 1000, 700, 1, 2, 2);
+        var settings = new StarMapSettings(systems.Length, 1000, 700, 1, 2, players);
         return new GeneratedStarMap(StarMapGenerator.CurrentVersion, seed, settings, systems,
             links.OrderBy(l => l.Item1).ThenBy(l => l.Item2).Select(l => new StarMapLink(l.Item1, l.Item2)).ToArray(),
             homes, Version, catalog);
@@ -118,6 +120,48 @@ public static class RealStarMap
         var choices = separated.Where(p => p.Imbalance <= fairest + 1).OrderBy(p => p.A).ThenBy(p => p.B).ToList();
         var pick = choices[(int)(Unit(seed, -1, -1) * choices.Count)];
         return Unit(seed, -2, -2) < 0.5 ? (pick.A, pick.B) : (pick.B, pick.A);
+    }
+
+    /// <summary>How uneven a set of homeworlds is: 0 is perfectly even. Compares nearby systems and the territory nearest each home.</summary>
+    public static int Imbalance(int[][] fromHomes)
+    {
+        int Within(int[] hops, int limit) => hops.Count(h => h > 0 && h <= limit);
+        int Spread(Func<int[], int> measure) { var values = fromHomes.Select(measure).ToArray(); return values.Max() - values.Min(); }
+        var nearest = fromHomes.Select((hops, home) => Enumerable.Range(0, hops.Length).Count(i => fromHomes.Where((_, other) => other != home).All(rival => hops[i] < rival[i]))).ToArray();
+        return Spread(hops => Within(hops, 1)) * 2 + Spread(hops => Within(hops, 2)) + nearest.Max() - nearest.Min();
+    }
+
+    // Three or four homeworlds: as far apart as the map allows (within one hop of the best possible), then the most even
+    // sets, then a seeded pick and a seeded order, so no clan is always handed the same corner.
+    static HomeworldAssignment[] FairHomes(int seed, int count, HashSet<(int, int)> links, int players)
+    {
+        var hops = Enumerable.Range(0, count).Select(id => Hops(count, links, id)).ToArray();
+        var sets = new List<(int[] Homes, int Separation)>();
+        void Choose(List<int> chosen, int from, int separation)
+        {
+            if (chosen.Count == players) { sets.Add((chosen.ToArray(), separation)); return; }
+            for (var next = from; next < count; next++)
+            {
+                var nearest = chosen.Count == 0 ? int.MaxValue : chosen.Min(home => hops[home][next]);
+                if (nearest < 2) continue; // Homeworlds are never neighbours.
+                chosen.Add(next); Choose(chosen, next + 1, Math.Min(separation, nearest)); chosen.RemoveAt(chosen.Count - 1);
+            }
+        }
+        Choose([], 0, int.MaxValue);
+        if (sets.Count == 0) throw new RuleException("This map has no room for that many clans.");
+        var widest = sets.Max(set => set.Separation);
+        var scored = sets.Where(set => set.Separation >= Math.Max(2, widest - 1))
+            .Select(set => (set.Homes, Imbalance: Imbalance(set.Homes.Select(home => hops[home]).ToArray()))).ToList();
+        var fairest = scored.Min(set => set.Imbalance);
+        var choices = scored.Where(set => set.Imbalance <= fairest + 1).OrderBy(set => string.Join(",", set.Homes.Select(home => home.ToString("D3")))).ToList();
+        var pick = choices[(int)(Unit(seed, -1, -1) * choices.Count)].Homes.ToList();
+        var homes = new HomeworldAssignment[players];
+        for (var slot = 0; slot < players; slot++)
+        {
+            var index = (int)(Unit(seed, -2, slot) * pick.Count);
+            homes[slot] = new HomeworldAssignment(slot, pick[index], 0); pick.RemoveAt(index);
+        }
+        return homes;
     }
 
     // Fixed arithmetic rather than System.Random, so a seed means the same map on every runtime.

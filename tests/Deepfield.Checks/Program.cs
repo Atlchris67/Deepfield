@@ -1,3 +1,4 @@
+if (args.Contains("--clans")) { ClanChecks.Run(); return; }
 if (args.Contains("--real-campaign")) { await RealCampaignChecks.Run(); return; }
 if (args.Contains("--ai")) { AiChecks.Run(); return; }
 if (args.Contains("--modes")) { ModeChecks.Run(); return; }
@@ -23,4 +24,5 @@ await AccountChecks.Run();
 await SeasonChecks.Run();
 ModeChecks.Run();
 PopulationChecks.Run();
+ClanChecks.Run();
 AiChecks.Run();

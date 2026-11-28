@@ -32,6 +32,16 @@ public static class GameCodec
     {
         var game = JsonSerializer.Deserialize<Game>(json) ?? throw new InvalidOperationException("Invalid campaign.");
         if (game.Schema is not (1 or 2 or 3 or 4)) throw new InvalidOperationException("Unsupported save schema.");
+        var clans = game.Clans.Count;
+        if (clans is < 2 or > Rules.MaximumClans || (clans > 2 && game.Mode is null) ||
+            game.Stars.Any(s => s.Ships is null || s.Ships.Length != clans || s.Scouts is null || s.Scouts.Length != clans || s.Owner is < 0 || s.Owner >= clans) ||
+            game.Winner is < 0 || game.Winner > clans || game.Winners is { } won && (won.Count == 0 || won.Distinct().Count() != won.Count || won.Any(t => t < 0 || t >= clans)))
+            throw new InvalidOperationException("Invalid number of clans.");
+        if ((clans == 2 && (game.Pacts.Count > 0 || game.Clans.Any(c => c.AllianceOffers.Count > 0))) ||
+            game.Pacts.Any(p => p.A < 0 || p.A >= p.B || p.B >= clans || p.Since < 1 || p.Ends <= p.Since - 1) ||
+            game.Pacts.GroupBy(p => (p.A, p.B)).Any(pair => pair.Count() > 1) ||
+            game.Clans.Select((c, team) => c.AllianceOffers.Any(other => other < 0 || other >= clans || other == team) || c.AllianceOffers.Distinct().Count() != c.AllianceOffers.Count).Any(bad => bad))
+            throw new InvalidOperationException("Invalid alliances.");
         if (game.EconomyVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported economy ruleset.");
         if (game.CombatVersion is not (0 or 1)) throw new InvalidOperationException("Unsupported combat ruleset.");
         if (game.LogisticsVersion is not (0 or 1) || (game.LogisticsVersion == 1 && game.GeneratedMap?.RealCatalogVersion is null) ||
@@ -52,13 +62,13 @@ public static class GameCodec
             (game.LogisticsVersion == 0 && game.Mode != Modes.Simple && game.Clans.Any(c => c.Materials is not { Length: Materials.Count } || c.Materials.Any(n => n < 0))) ||
             (game.LogisticsVersion == 1 && (game.Clans.Any(c => c.Materials is not null) ||
                 game.Stars.Any(s => s.Stockpile is not null && (s.Stockpile.Length != Materials.Count || s.Stockpile.Any(n => n < 0)) ||
-                    s.Owner is not null && s.Stockpile is null || s.Freighters is not { Length: 2 } || s.Freighters.Any(n => n < 0)))) ||
+                    s.Owner is not null && s.Stockpile is null || s.Freighters is null || s.Freighters.Length != game.Clans.Count || s.Freighters.Any(n => n < 0)))) ||
             game.Stars.Any(s => s.Mines is < 0 or > 4 || s.SettlementSize is < 0 or > 4)))
             throw new InvalidOperationException("Invalid real-system material save.");
         if(game.CombatVersion==1)
         {
-            if(game.Stars.Any(s=>s.Fleets==null||s.Fleets.Length!=2||s.Fleets.Any(f=>f.Length!=5||f.Any(n=>n<0||n>10000))))throw new InvalidOperationException("Invalid typed fleet save.");
-            if(Enumerable.Range(0,2).Any(t=>Enumerable.Range(0,5).Any(h=>game.Stars.Sum(s=>(long)s.Fleets![t][h])>10000)))throw new InvalidOperationException("Typed fleet capacity exceeded.");
+            if(game.Stars.Any(s=>s.Fleets==null||s.Fleets.Length!=game.Clans.Count||s.Fleets.Any(f=>f.Length!=5||f.Any(n=>n<0||n>10000))))throw new InvalidOperationException("Invalid typed fleet save.");
+            if(Enumerable.Range(0,game.Clans.Count).Any(t=>Enumerable.Range(0,5).Any(h=>game.Stars.Sum(s=>(long)s.Fleets![t][h])>10000)))throw new InvalidOperationException("Typed fleet capacity exceeded.");
             foreach(var star in game.Stars)TypedCombat.Sync(star);
         }
         game.ReconEntropy ??= Recon.NewEntropy();
@@ -98,18 +108,20 @@ public static class Recon
                 var ordinal = occurrences.GetValueOrDefault(key); occurrences[key] = ordinal + 1;
                 var returned = Roll(g,team,order,ordinal) < g.ReconRates.Chance(mission);
                 if (!returned) g.Stars[order.Source].Scouts[team]--;
-                var target = snapshot[order.Target]; var enemy = 1 - team;
-                var present = target.Ships[enemy] > 0 || target.Scouts[enemy] > 0 || target.Owner == enemy;
+                // What a scout reports about other clans covers every clan its own is not allied with, added together.
+                var target = snapshot[order.Target]; var enemies = Enumerable.Range(0, g.Clans.Count).Where(other => Alliances.Hostile(g, team, other)).ToArray();
+                var enemyShips = enemies.Sum(e => target.Ships[e]); var enemyScouts = enemies.Sum(e => target.Scouts[e]);
+                var present = enemyShips > 0 || enemyScouts > 0 || (target.Owner is int held && enemies.Contains(held));
                 var environment = returned && mission == "deep" ? g.Stars[order.Target].Environment : null;
                 var intel = new Intelligence($"{g.Turn}:{team}:{order.Source}:{order.Target}:{mission}:{ordinal}",order.Target,g.Turn,at,
                     "arrival / before combat",mission,returned,returned ? present : present ? true : null,
                     returned,returned ? target.Owner : null,
-                    returned && mission is "close" or "deep" ? Band(target.Ships[enemy]) : null,
-                    returned && mission == "deep" ? target.Ships[enemy] : null,
-                    returned && mission == "deep" ? target.Scouts[enemy] : null,
+                    returned && mission is "close" or "deep" ? Band(enemyShips) : null,
+                    returned && mission == "deep" ? enemyShips : null,
+                    returned && mission == "deep" ? enemyScouts : null,
                     returned && mission == "deep" ? target.Collectors : null,
                     returned && mission == "deep" ? target.Defense : null,
-                    returned && mission == "deep" ? target.Fleets?[enemy].ToArray() : null,
+                    returned && mission == "deep" && target.Fleets is not null ? Enumerable.Range(0, 5).Select(h => enemies.Sum(e => target.Fleets[e][h])).ToArray() : null,
                     returned && mission == "deep" && g.GeneratedMap?.RealCatalogVersion is not null
                         ? Materials.Survey(g, order.Target) : null,
                     environment is not null
