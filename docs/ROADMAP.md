@@ -13,7 +13,7 @@ The goals, owner decisions, Stars! clean-room rule and definition of version 1.0
 | 5 | Fill-in AI for missing players | Done, on `main`. See [COMPUTER-PLAYER.md](COMPUTER-PLAYER.md) |
 | 6 | Desktop polish and recorded verification | Done, on `main`. Results are in [VERIFICATION.md](VERIFICATION.md) |
 | 7 | Everything merged to `main` with CI | Done. `main` holds all the work and is the default branch; CI (`.github/workflows/ci.yml`) runs the build, every recorded check and the container image on each pull request and each push to `main`. Pull requests #12, #14 and #15 were not included: see [VERIFICATION.md](VERIFICATION.md) |
-| 8 | Tidy up for 1.0 | In review: pull request from `feature/tidy-1.0`. Inhabitants added in both modes, the turn-limit tie-break confirmed, and this page brought up to date |
+| 8 | Tidy up for 1.0 | Done, on `main`. Inhabitants added in both modes ([MODES.md](MODES.md)), the turn-limit tie-break confirmed, and this page brought up to date |
 
 ## What is left before version 1.0
 
